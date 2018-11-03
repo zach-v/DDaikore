@@ -177,9 +177,9 @@ namespace DDaikore
                     //Always run the processing loops
                     if (menuIndex != -1)
                     {
-                        if (!MenuLoop.Equals(null)) MenuLoop();
+                        if (!ReferenceEquals(MenuLoop, null)) MenuLoop();
                     }
-                    else if (!GameLoop.Equals(null)) GameLoop();
+                    else if (!ReferenceEquals(GameLoop, null)) GameLoop();
 
                     //Draw if we have plenty of time
                     if (nextTicks - sw.ElapsedTicks >= drawTime || skippedFrames >= 8)
@@ -187,9 +187,9 @@ namespace DDaikore
                         drawStart = sw.ElapsedTicks;
                         if (menuIndex != -1)
                         {
-                            if (!MenuDraw.Equals(null)) MenuDraw();
+                            if (!ReferenceEquals(MenuDraw, null)) MenuDraw();
                         }
-                        else if (!GameDraw.Equals(null)) GameDraw();
+                        else if (!ReferenceEquals(GameDraw, null)) GameDraw();
 
                         //Adjust estimated draw time
                         drawTime = (drawTime * (movingAverageTicks - 1) + sw.ElapsedTicks - drawStart) / movingAverageTicks;

@@ -8,6 +8,8 @@ namespace DDaikontin
 {
     class DCircle
     {
-
+        public double X;
+        public double Y;
+        public double Radius;
     }
 }
