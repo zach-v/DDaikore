@@ -5,10 +5,12 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Diagnostics;
 using System.Threading;
+using System.Windows.Forms;
+using System.Runtime.InteropServices;
 
 namespace DDaikore
 {
-    class Core
+    public class Core
     {
         /// <summary>
         /// Menu procesing. Occurs 120 times per second.
@@ -41,18 +43,95 @@ namespace DDaikore
         public long frameCounter = 0;
         protected bool exiting = false;
 
+        #region Input
+        [DllImport("user32.dll", CharSet = CharSet.Auto, ExactSpelling = true)]
+        private static extern GetKeyStateRet GetKeyState(int keyCode);
+
+        [Flags]
+        private enum GetKeyStateRet : ushort
+        {
+            None = 0,
+            Down = 0x8000,
+            Toggled = 0x1
+        }
+
+        public enum InputState
+        {
+            NotHeld, JustReleased, Held, JustPressed
+        }
+
+        private class InputInfo
+        {
+            public InputState state;
+            public int controller; //-2 is mouse, -1 is keyboard, 0+ are game controllers (arbitrary count, hence why I shouldn't use an enum)
+            public int button;
+        }
+
+        /// <summary>
+        /// Item1 is the state; Item2 is additional info required to figure out what we're looking for internally
+        /// </summary>
+        private List<InputInfo> DigitalInputs = new List<InputInfo>();
+
+        /// <summary>
+        /// Request input state using the value returned by RegisterInput for the desired key
+        /// </summary>
+        /// <param name="index"></param>
+        /// <returns></returns>
+        public InputState GetInputState(int index)
+        {
+            return DigitalInputs[index].state;
+        }
+
+        public int RegisterInput(Keys key)
+        {
+            DigitalInputs.Add(new InputInfo { state = InputState.NotHeld, controller = -1, button = (int)key });
+            return DigitalInputs.Count - 1;
+        }
+
+        private void UpdateInputs()
+        {
+            //Loop through all registered inputs and update their states
+            foreach (var input in DigitalInputs)
+            {
+                if (input.controller == -1) //Keyboard
+                {
+                    var keyDown = GetKeyState(input.button).HasFlag(GetKeyStateRet.Down);
+                    if (keyDown)
+                    {
+                        if (input.state == InputState.NotHeld) input.state = InputState.JustPressed;
+                        else input.state = InputState.Held;
+                    }
+                    else
+                    {
+                        if (input.state == InputState.Held) input.state = InputState.JustReleased;
+                        else input.state = InputState.NotHeld;
+                    }
+                }
+                else
+                {
+                    throw new NotImplementedException("Mouse and game controllers not yet supported");
+                }
+            }
+        }
+        #endregion
+
         static void Main(string[] args)
         {
             Console.WriteLine("Please start from the main method of a game class.");
 
             //Test timing code
             var me = new Core();
+            var akey = me.RegisterInput(Keys.A);
+            var bkey = me.RegisterInput(Keys.B);
             me.MenuLoop = () => {
-                Console.WriteLine("Proc " + me.frameCounter);
-                if (me.frameCounter > 300) me.Exit();
+                //Console.WriteLine("Proc " + me.frameCounter);
+                Console.WriteLine(me.GetInputState(akey));
+                if (me.GetInputState(bkey) == InputState.JustPressed) Console.WriteLine("B just pressed");
+                if (me.GetInputState(bkey) == InputState.JustReleased) Console.WriteLine("B just released");
+                //if (me.frameCounter > 300) me.Exit();
             };
             me.MenuDraw = () => {
-                Console.WriteLine("Draw " + me.frameCounter);
+                //Console.WriteLine("Draw " + me.frameCounter);
             };
             me.Begin();
             //Cleanup goes here
@@ -87,6 +166,7 @@ namespace DDaikore
             {
                 if (sw.ElapsedTicks >= nextTicks)
                 {
+                    UpdateInputs();
                     //Don't try to catch up if you're more than 60 frames behind
                     if (sw.ElapsedTicks > nextTicks + targetTickRate * 60)
                     {
