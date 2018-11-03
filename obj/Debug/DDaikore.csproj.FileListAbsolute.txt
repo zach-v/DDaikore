@@ -1,0 +1,7 @@
+E:\DeProgrammer\Documents\CodeProjects\CSharp\DDaikore\bin\Debug\DDaikore.exe.config
+E:\DeProgrammer\Documents\CodeProjects\CSharp\DDaikore\bin\Debug\DDaikore.exe
+E:\DeProgrammer\Documents\CodeProjects\CSharp\DDaikore\bin\Debug\DDaikore.pdb
+E:\DeProgrammer\Documents\CodeProjects\CSharp\DDaikore\obj\Debug\DDaikore.csprojAssemblyReference.cache
+E:\DeProgrammer\Documents\CodeProjects\CSharp\DDaikore\obj\Debug\DDaikore.csproj.CoreCompileInputs.cache
+E:\DeProgrammer\Documents\CodeProjects\CSharp\DDaikore\obj\Debug\DDaikore.exe
+E:\DeProgrammer\Documents\CodeProjects\CSharp\DDaikore\obj\Debug\DDaikore.pdb
