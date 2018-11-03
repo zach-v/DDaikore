@@ -1,0 +1,14 @@
+C:\Users\Owner\Documents\GitHub\DDaikontin\bin\Debug\DDaikontin.exe.config
+C:\Users\Owner\Documents\GitHub\DDaikontin\bin\Debug\DDaikontin.exe
+C:\Users\Owner\Documents\GitHub\DDaikontin\bin\Debug\DDaikontin.pdb
+C:\Users\Owner\Documents\GitHub\DDaikontin\bin\Debug\DDaikore.exe
+C:\Users\Owner\Documents\GitHub\DDaikontin\bin\Debug\DDaikore.pdb
+C:\Users\Owner\Documents\GitHub\DDaikontin\bin\Debug\DDaikore.exe.config
+C:\Users\Owner\Documents\GitHub\DDaikontin\obj\Debug\DDaikontin.csprojAssemblyReference.cache
+C:\Users\Owner\Documents\GitHub\DDaikontin\obj\Debug\DDaikontin.Form1.resources
+C:\Users\Owner\Documents\GitHub\DDaikontin\obj\Debug\DDaikontin.Properties.Resources.resources
+C:\Users\Owner\Documents\GitHub\DDaikontin\obj\Debug\DDaikontin.csproj.GenerateResource.cache
+C:\Users\Owner\Documents\GitHub\DDaikontin\obj\Debug\DDaikontin.csproj.CoreCompileInputs.cache
+C:\Users\Owner\Documents\GitHub\DDaikontin\obj\Debug\DDaikontin.csproj.CopyComplete
+C:\Users\Owner\Documents\GitHub\DDaikontin\obj\Debug\DDaikontin.exe
+C:\Users\Owner\Documents\GitHub\DDaikontin\obj\Debug\DDaikontin.pdb

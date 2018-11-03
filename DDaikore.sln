@@ -5,6 +5,8 @@ VisualStudioVersion = 15.0.28010.2050
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DDaikore", "DDaikore.csproj", "{A4473F0B-E8CD-4977-BACE-8899264170A4}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DDaikontin", "DDaikontin\DDaikontin.csproj", "{469B9521-19A6-413F-A255-7309FE846510}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{A4473F0B-E8CD-4977-BACE-8899264170A4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A4473F0B-E8CD-4977-BACE-8899264170A4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A4473F0B-E8CD-4977-BACE-8899264170A4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{469B9521-19A6-413F-A255-7309FE846510}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{469B9521-19A6-413F-A255-7309FE846510}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{469B9521-19A6-413F-A255-7309FE846510}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{469B9521-19A6-413F-A255-7309FE846510}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

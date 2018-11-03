@@ -5,3 +5,10 @@ E:\DeProgrammer\Documents\CodeProjects\CSharp\DDaikore\obj\Debug\DDaikore.csproj
 E:\DeProgrammer\Documents\CodeProjects\CSharp\DDaikore\obj\Debug\DDaikore.csproj.CoreCompileInputs.cache
 E:\DeProgrammer\Documents\CodeProjects\CSharp\DDaikore\obj\Debug\DDaikore.exe
 E:\DeProgrammer\Documents\CodeProjects\CSharp\DDaikore\obj\Debug\DDaikore.pdb
+C:\Users\Owner\Documents\GitHub\DDaikore\bin\Debug\DDaikore.exe.config
+C:\Users\Owner\Documents\GitHub\DDaikore\bin\Debug\DDaikore.exe
+C:\Users\Owner\Documents\GitHub\DDaikore\bin\Debug\DDaikore.pdb
+C:\Users\Owner\Documents\GitHub\DDaikore\obj\Debug\DDaikore.csprojAssemblyReference.cache
+C:\Users\Owner\Documents\GitHub\DDaikore\obj\Debug\DDaikore.csproj.CoreCompileInputs.cache
+C:\Users\Owner\Documents\GitHub\DDaikore\obj\Debug\DDaikore.exe
+C:\Users\Owner\Documents\GitHub\DDaikore\obj\Debug\DDaikore.pdb
