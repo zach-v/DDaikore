@@ -8,7 +8,8 @@ namespace DDaikontin
 {
     public class DCollider
     {
-        private List<DCircle> dCircles = new List<DCircle>();
+        //TODO: make private later
+        public List<DCircle> dCircles = new List<DCircle>();
 
         public static void test()
         {

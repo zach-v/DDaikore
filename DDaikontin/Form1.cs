@@ -75,8 +75,16 @@ namespace DDaikontin
             g.DrawString("Exit", this.Font, core.menuOption == 1 ? Brushes.Blue : Brushes.Black, new PointF(20, 60));
         }
 
+        //TODO: make more comments on code
         private void drawGame(Graphics g)
         {
+            foreach (var ship in gs.playerShips)
+            {
+                foreach (var circle in ship.collider.dCircles)
+                {
+                    g.DrawEllipse(Pens.Black, (float) ship.posX, (float) ship.posY, (float) circle.Radius * 2, (float) circle.Radius * 2);
+                }
+            }
 
         }
 
@@ -90,6 +98,9 @@ namespace DDaikontin
         public class GameState
         {
             public List<ShipBase> playerShips = new List<ShipBase>();
+            public List<ShipBase> enemyShips = new List<ShipBase>();
+
+            
         }
 
         protected GameState gs = new GameState();
@@ -101,7 +112,7 @@ namespace DDaikontin
 
         public void GameLoop()
         {
-            //Physics!
+            //Physics! :o
             for (var x = 0; x < gs.playerShips.Count; x++)
             {
                 for (var y = x + 1; y < gs.playerShips.Count; y++)
