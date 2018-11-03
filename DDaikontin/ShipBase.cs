@@ -9,27 +9,30 @@ namespace DDaikontin
 {
     class ShipBase
     {
-        private double velocity = 0;
-        private double acceleration = 0;
-        private PointF position;
+        public double velocity = 0;
+        public double acceleration = 0;
+        public double posX;
+        public double posY;
 
-        private UnitGraphics uGraphics;
+        public UnitGraphics uGraphics;
+        public DCollider collider;
 
         public ShipBase(UnitGraphics uGraphics)
         {
             this.uGraphics = uGraphics;
-            position = new PointF(0, 0);    // Default to 0,0
+            posX = 0;
+            posY = 0;
         }
 
-        public ShipBase(UnitGraphics uGraphics, PointF position)
+        public ShipBase(UnitGraphics uGraphics, double posX, double posY)
         {
             this.uGraphics = uGraphics;
-            this.position = position;
+            this.posX = posX;
+            this.posY = posY;
         }
 
-        public double getVelocity()
-        {
-            return velocity;
+        public double getVelocity {
+            get;
         }
 
         public double getAcceleration()

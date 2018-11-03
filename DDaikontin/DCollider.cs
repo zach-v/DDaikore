@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace DDaikontin
 {
-    class DCollider
+    public class DCollider
     {
         private List<DCircle> dCircles = new List<DCircle>();
 

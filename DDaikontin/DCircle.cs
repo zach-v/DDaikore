@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace DDaikontin
 {
-    class DCircle
+    public class DCircle
     {
         public double X;
         public double Y;
