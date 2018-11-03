@@ -7,10 +7,11 @@ using System.Drawing;
 
 namespace DDaikontin
 {
-    class ShipBase
+    public class ShipBase
     {
         public double velocity = 0;
         public double acceleration = 0;
+        public double angle = 0; //Radians
         public double posX;
         public double posY;
 
@@ -38,6 +39,16 @@ namespace DDaikontin
         public double getAcceleration()
         {
             return acceleration;
+        }
+
+        /// <summary>
+        /// Check if this ShipBase collides with another ShipBase //TODO: Make it into an interface
+        /// </summary>
+        /// <param name="other"></param>
+        /// <returns></returns>
+        public bool CollidesWith(ShipBase other)
+        {
+            return this.collider.CollidesWith(this.posX, this.posY, other.collider, other.posX, other.posY);
         }
     }
 }

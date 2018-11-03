@@ -27,6 +27,8 @@ namespace DDaikontin
             {
                 core.MenuLoop = MenuLoop;
                 core.MenuDraw = MenuDraw;
+                core.GameLoop = GameLoop;
+                core.GameDraw = MenuDraw; //Drawing is done in the Paint method for now
                 enterKey = core.RegisterInput(Keys.Enter);
                 core.Begin();
             }).Start();
@@ -59,5 +61,38 @@ namespace DDaikontin
             g.DrawString("Meow", this.Font, Brushes.Black, new PointF(20, 20));
             if (drawMeow2) g.DrawString("Meow", this.Font, Brushes.Black, new PointF(50, 50));
         }
+
+        public class GameState
+        {
+            public List<ShipBase> playerShips = new List<ShipBase>();
+        }
+
+        protected GameState gs = new GameState();
+
+        public void ResetGameState()
+        {
+            gs = new GameState();
+        }
+
+        public void GameLoop()
+        {
+            //Physics!
+            for (var x = 0; x < gs.playerShips.Count; x++)
+            {
+                for (var y = x + 1; y < gs.playerShips.Count; y++)
+                {
+                    if (gs.playerShips[x].CollidesWith(gs.playerShips[y]))
+                    {
+                        //TODO: Give damage
+                        //TODO: Make ships bounce apart (get angle between ships and send them in opposite directions)
+                        gs.playerShips[x].velocity = -5;
+                        gs.playerShips[y].velocity = 5;
+                    }
+                }
+            }
+
+            //TODO: Other collisions, player inputs, stuff, things, etc.
+        }
+
     }
 }
