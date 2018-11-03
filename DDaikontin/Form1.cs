@@ -37,9 +37,13 @@ namespace DDaikontin
 
         public void MenuLoop()
         {
-            if (core.GetInputState(enterKey) == Core.InputState.JustPressed) core.menuIndex = -1;
-            if (core.GetInputState(upArrowKey) == Core.InputState.JustPressed) core.menuOption = (core.menuOption + 1) % 2;
-            if (core.GetInputState(downArrowKey) == Core.InputState.JustPressed) core.menuOption = core.menuOption == 0 ? 1 : core.menuOption - 1;
+            if (core.GetInputState(enterKey) == Core.InputState.JustPressed)
+            {
+                ResetGameState();
+                core.menuIndex = -1;
+            }
+            else if (core.GetInputState(upArrowKey) == Core.InputState.JustPressed) core.menuOption = (core.menuOption + 1) % 2;
+            else if (core.GetInputState(downArrowKey) == Core.InputState.JustPressed) core.menuOption = core.menuOption == 0 ? 1 : core.menuOption - 1;
         }
 
         public void MenuDraw()
@@ -103,11 +107,13 @@ namespace DDaikontin
             
         }
 
-        protected GameState gs = new GameState();
+        protected GameState gs;
 
         public void ResetGameState()
         {
             gs = new GameState();
+            var playerShipGfx = new UnitGraphics();
+            gs.playerShips.Add(new ShipBase(playerShipGfx, 10, 100));
         }
 
         public void GameLoop()

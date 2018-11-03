@@ -10,10 +10,9 @@ namespace DDaikontin
     public class UnitGraphics
     {
         // Contains visual graphics about specific units
-        List<PointF> points;
+        List<PointF> points = new List<PointF>();
         public UnitGraphics()
         {
-            points = new List<PointF>();
             init();
         }
 
