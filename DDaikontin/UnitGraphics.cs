@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace DDaikontin
 {
-    class UnitGraphics
+    public class UnitGraphics
     {
         // Contains visual graphics about specific units
         List<PointF> points;
