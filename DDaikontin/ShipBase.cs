@@ -10,8 +10,8 @@ namespace DDaikontin
     public class ShipBase
     {
         public double velocity = 0;
-        public double acceleration = 0;
         public double angle = 0; //Radians
+        public double facing = 0;
         public double posX;
         public double posY;
 
@@ -21,24 +21,29 @@ namespace DDaikontin
         public ShipBase(UnitGraphics uGraphics)
         {
             this.uGraphics = uGraphics;
-            posX = 0;
-            posY = 0;
+            this.collider = new DCollider(uGraphics);
+            this.posX = 10;
+            this.posY = 10;
         }
 
         public ShipBase(UnitGraphics uGraphics, double posX, double posY)
         {
             this.uGraphics = uGraphics;
+            this.collider = new DCollider(uGraphics);
             this.posX = posX;
             this.posY = posY;
         }
 
-        public double getVelocity {
-            get;
-        }
+        public void applyForce(double force, double direction) {
+            //Break velocity + angle down into X and Y components, then add the .rotation-based force, then convert back with atan2 and the distance formula
+            double xSpeed = velocity * Math.Cos(angle);
+            double ySpeed = velocity * Math.Sin(angle);
 
-        public double getAcceleration()
-        {
-            return acceleration;
+            xSpeed += force * Math.Cos(direction);
+            ySpeed += force * Math.Sin(direction);
+
+            velocity = Math.Sqrt(xSpeed * xSpeed + ySpeed * ySpeed);
+            angle = Math.Atan2(ySpeed, xSpeed);
         }
 
         /// <summary>

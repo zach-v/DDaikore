@@ -10,23 +10,26 @@ namespace DDaikontin
     public class UnitGraphics
     {
         // Contains visual graphics about specific units
-        List<PointF> points = new List<PointF>();
+        public List<PointF> points;
+        public Pen color;
+
         public UnitGraphics()
         {
-            init();
+            color = Pens.White;
+            points = new List<PointF>();
         }
 
-        // just to test the points, creates a rectangle
-        // -------------------------------------------------
-        // THIS IS JUST A TEST MASON
-        private void init()
+        public UnitGraphics(Pen color)
         {
-            points.Add(new PointF(10, 20));
-            points.Add(new PointF(30, 20));
-            points.Add(new PointF(30, 10));
-            points.Add(new PointF(10, 10));
+            this.color = color;
+            points = new List<PointF>();
         }
-        // -------------------------------------------------
+
+        public UnitGraphics(Pen color, List<PointF> points)
+        {
+            this.color = color;
+            this.points = points;
+        }
 
         public void populate(List<PointF> points)
         {

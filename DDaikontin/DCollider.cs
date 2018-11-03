@@ -31,7 +31,8 @@ namespace DDaikontin
 
         public DCollider(UnitGraphics uGraphics)
         {
-            throw new NotImplementedException("Need to make a collision shape from the graphics");
+            dCircles.Add(new DCircle() {Radius = 10});
+            //throw new NotImplementedException("Need to make a collision shape from the graphics");
         }
 
         public bool CollidesWith(double x, double y, DCollider other, double otherX, double otherY)
