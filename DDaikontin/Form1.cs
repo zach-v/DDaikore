@@ -16,9 +16,8 @@ namespace DDaikontin
     {
         Core core = new Core();
         private int enterKey = 0;
-        private bool exited = false;
-
-        private bool drawMeow2 = false;
+        private int upArrowKey = 0;
+        private int downArrowKey = 0;
 
         public Form1()
         {
@@ -29,16 +28,18 @@ namespace DDaikontin
                 core.MenuDraw = MenuDraw;
                 core.GameLoop = GameLoop;
                 core.GameDraw = MenuDraw; //Drawing is done in the Paint method for now
-                enterKey = core.RegisterInput(Keys.Enter);
+
+                regKeys();
+
                 core.Begin();
             }).Start();
         }
 
         public void MenuLoop()
         {
-            var state = core.GetInputState(enterKey);
-            if (state == Core.InputState.JustPressed) drawMeow2 = true;
-            else drawMeow2 = false;
+            if (core.GetInputState(enterKey) == Core.InputState.JustPressed) core.menuIndex = -1;
+            if (core.GetInputState(upArrowKey) == Core.InputState.JustPressed) core.menuOption = (core.menuOption + 1) % 2;
+            if (core.GetInputState(downArrowKey) == Core.InputState.JustPressed) core.menuOption = core.menuOption == 0 ? 1 : core.menuOption - 1;
         }
 
         public void MenuDraw()
@@ -57,9 +58,33 @@ namespace DDaikontin
             //Clear the background
             g.FillRectangle(Brushes.White, 0, 0, pictureBox1.Width, pictureBox1.Height);
 
-            //TODO: This is where you draw stuff
-            g.DrawString("Meow", this.Font, Brushes.Black, new PointF(20, 20));
-            if (drawMeow2) g.DrawString("Meow", this.Font, Brushes.Black, new PointF(50, 50));
+            if (core.menuOption == 0)
+            {
+                drawMenu(g);
+            }
+            if (core.menuOption == -1)
+            {
+                drawGame(g);
+            }
+        }
+
+        private void drawMenu(Graphics g)
+        {
+            g.DrawString("Daikontinum", this.Font, Brushes.Black, new PointF(20, 10));
+            g.DrawString("Play", this.Font, core.menuOption == 0 ? Brushes.Blue : Brushes.Black, new PointF(20, 40));
+            g.DrawString("Exit", this.Font, core.menuOption == 1 ? Brushes.Blue : Brushes.Black, new PointF(20, 60));
+        }
+
+        private void drawGame(Graphics g)
+        {
+
+        }
+
+        private void regKeys()
+        {
+            enterKey = core.RegisterInput(Keys.Enter);
+            upArrowKey = core.RegisterInput(Keys.Up);
+            downArrowKey = core.RegisterInput(Keys.Down);
         }
 
         public class GameState

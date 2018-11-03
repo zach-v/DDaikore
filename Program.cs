@@ -37,6 +37,7 @@ namespace DDaikore
         /// Currently active menu (0 = main menu; -1 = not in a menu)
         /// </summary>
         public int menuIndex = 0;
+        public int menuOption = 0;
         /// <summary>
         /// Computational frame counter
         /// </summary>
