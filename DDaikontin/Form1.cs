@@ -31,8 +31,11 @@ namespace DDaikontin
         private PlayingSoundEffect gameMusic = null;
 
         private int[] menuItems = { 4, 1, 1 }; //indexed by core.menuIndex
-        private int creditsScroll;
-        private string[] creditsLines = { "--Credits--", "", "Mason \"DeProgrammer\" McCoy", "Zach \"SwagDoge\" Vanscoit", "@ HackSI 2018" };
+        private float creditsScroll;
+        private string[] creditsLines = { "--Credits--", "",
+            "Aureuscode", "Mason \"DeProgrammer\" McCoy", "",
+            "Snacktivision", "Zach \"SwagDoge\" Vanscoit", "",
+            "@ HackSI 2018" };
 
         public Form1()
         {
@@ -170,7 +173,7 @@ namespace DDaikontin
         private void DrawStringHorizontallyCentered(Graphics g, string text, Font font, Brush brush, float x, float y, float width, float height)
         {
             var size = g.MeasureString(text, font, (int)width);
-            g.DrawString(text, font, brush, new RectangleF(x + width / 2 - size.Width / 2, y, size.Width, height));
+            g.DrawString(text, font, brush, new RectangleF(x + width / 2 - size.Width / 2, y, size.Width + 2, height + 2));
         }
 
         private void DrawStringCentered(Graphics g, string text, Font font, Brush brush, float x, float y, float width, float height)
@@ -198,17 +201,18 @@ namespace DDaikontin
             }
             else if (core.menuIndex == 2) //Credits
             {
-                creditsScroll -= 2;
+                creditsScroll--;
                 //Loop around
                 var lineHeight = (int)g.MeasureString("A", Font, pictureBox1.Width).Height + 8;
                 if (creditsScroll < -lineHeight * creditsLines.Length) creditsScroll = pictureBox1.Height;
                 var tScroll = creditsScroll;
                 for (int x = 0; x < creditsLines.Length; x++)
                 {
-                    DrawStringCentered(g, creditsLines[x], Font, Brushes.White, 0, tScroll, pictureBox1.Width, lineHeight);
+                    if (tScroll >= pictureBox1.Height - 90) break;
+                    DrawStringHorizontallyCentered(g, creditsLines[x], Font, Brushes.White, 0, tScroll, pictureBox1.Width, pictureBox1.Height - 90 - tScroll);
                     tScroll += lineHeight;
                 }
-                DrawStringCentered(g, "Back", Font, core.menuOption == 0 ? Brushes.White : Brushes.Gray, 0, pictureBox1.Height - 80, pictureBox1.Width, 80);
+                DrawStringCentered(g, "Back", Font, core.menuOption == 0 ? Brushes.White : Brushes.Gray, 0, pictureBox1.Height - 80, pictureBox1.Width, 40);
             }
         }
 
@@ -247,8 +251,7 @@ namespace DDaikontin
 #if DEBUG
                 foreach (var circle in projectile.collider.dCircles)
                 {
-                    var rotatedPoints = Geometry.Rotate((float)circle.X, (float)circle.Y, (float)projectile.facing);
-                    g.DrawEllipse(Pens.Aqua, (float)(-circle.Radius + rotatedPoints.X), (float)(-circle.Radius + rotatedPoints.Y),
+                    g.DrawEllipse(Pens.Aqua, (float)(-circle.Radius + circle.X), (float)(-circle.Radius + circle.Y),
                         (float)circle.Radius * 2, (float)circle.Radius * 2);
                 }
 #endif
@@ -260,14 +263,22 @@ namespace DDaikontin
                 g.Transform = oldTransform;
                 g.TranslateTransform((float)ship.posX, (float)ship.posY);
                 g.RotateTransform((float)(ship.facing / Math.PI * 180));
-                
-                g.DrawLines(ship.uGraphics.color, ship.uGraphics.points.ToArray());
+
+                if (ship.lastDamagedFrame <= core.frameCounter - 8)
+                {
+                    g.DrawLines(ship.uGraphics.color, ship.uGraphics.points.ToArray());
+                }
+                else //Invert ship color when recently damaged
+                {
+                    var tempColor = ship.uGraphics.color.Color.ToArgb();
+                    var tempPen = new Pen(Color.FromArgb(tempColor ^ 0x00FFFFFF));
+                    g.DrawLines(tempPen, ship.uGraphics.points.ToArray());
+                }
 
 #if DEBUG
                 foreach (var circle in ship.collider.dCircles)
                 {
-                    var rotatedPoints = Geometry.Rotate((float)circle.X, (float)circle.Y, (float)ship.facing);
-                    g.DrawEllipse(Pens.Aqua, (float)(-circle.Radius + rotatedPoints.X), (float)(-circle.Radius + rotatedPoints.Y), 
+                    g.DrawEllipse(Pens.Aqua, (float)(-circle.Radius + circle.X), (float)(-circle.Radius + circle.Y), 
                         (float)circle.Radius * 2, (float)circle.Radius * 2);
                 }
 #endif
@@ -339,7 +350,7 @@ namespace DDaikontin
                     {
                         if (ship.CollidesWith(projectile))
                         {
-                            ship.Damage(projectile.damage);
+                            ship.Damage(projectile.damage, core.frameCounter);
                             projectile.Kill();
                         }
                     }
@@ -353,7 +364,7 @@ namespace DDaikontin
                     {
                         if (ship.CollidesWith(projectile))
                         {
-                            ship.Damage(projectile.damage);
+                            ship.Damage(projectile.damage, core.frameCounter);
                             projectile.Kill();
                         }
                     }
@@ -372,8 +383,8 @@ namespace DDaikontin
                             var targetAngle = Geometry.Face(gs.playerShips[x].posX, gs.playerShips[x].posY, gs.playerShips[y].posX, gs.playerShips[y].posY);
                             gs.playerShips[x].ApplyForce(5, targetAngle);
                             gs.playerShips[y].ApplyForce(5, -targetAngle);
-                            gs.playerShips[x].Damage(1);
-                            gs.playerShips[y].Damage(1);
+                            gs.playerShips[x].Damage(1, core.frameCounter);
+                            gs.playerShips[y].Damage(1, core.frameCounter);
                         }
                     }
                 }
@@ -385,8 +396,8 @@ namespace DDaikontin
                     {
                         if (ship.CollidesWith(foe))
                         {
-                            ship.Damage(1);
-                            foe.Damage(20);
+                            ship.Damage(1, core.frameCounter);
+                            foe.Damage(20, core.frameCounter);
                         }
                         //TODO: Deactivate enemies that are far away; you can move them to a separate list and check less frequently to see if they should be readded to active list
                     }

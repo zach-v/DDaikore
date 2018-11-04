@@ -34,18 +34,18 @@ namespace DDaikontin
             //throw new NotImplementedException("Need to make a collision shape from the graphics");
         }
 
-        public bool CollidesWith(double x, double y, DCollider other, double otherX, double otherY)
+        public bool CollidesWith(double x, double y, double facing, DCollider other, double otherX, double otherY, double otherFacing)
         {
-            //TODO: Account for rotation of the object that owns the collider
-
             foreach (var c in dCircles)
             {
-                var cX = x + c.X - otherX;
-                var cY = y + c.Y - otherY;
+                var rotatedC = Geometry.Rotate((float)c.X, (float)c.Y, (float)facing);
+                var cX = x + rotatedC.X - otherX;
+                var cY = y + rotatedC.Y - otherY;
                 foreach (var d in other.dCircles)
                 {
-                    var distX = cX - d.X;
-                    var distY = cY - d.Y;
+                    var rotatedD = Geometry.Rotate((float)d.X, (float)d.Y, (float)otherFacing);
+                    var distX = cX - rotatedD.X;
+                    var distY = cY - rotatedD.Y;
                     var rad = c.Radius + d.Radius;
                     if (distX * distX + distY * distY < rad * rad) return true;
                 }

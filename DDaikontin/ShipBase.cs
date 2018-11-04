@@ -12,6 +12,8 @@ namespace DDaikontin
         Player,
         ShootConstantly,
 
+        Boss,
+
     }
 
     public class ShipBase : Body
@@ -23,11 +25,13 @@ namespace DDaikontin
         public int lastBulletIndex = 0;
         public int framesBetweenBullets = 5; //TODO: Look up bulletRate by bullet type? Pass it in? What if they switch weapons?
         public long lastFrameFired = 0;
+        public long lastDamagedFrame = -100;
 
         public int bulletMode = 0;
         public int health = 3;
 
         public Behavior behavior = Behavior.Player;
+        protected int behaviorState = 0;
 
         public UnitGraphics uGraphics;
         /// <summary>
@@ -66,8 +70,9 @@ namespace DDaikontin
             if (!ReferenceEquals(OnDeath, null)) OnDeath();
         }
 
-        public void Damage(int amount)
+        public void Damage(int amount, long currentFrame)
         {
+            lastDamagedFrame = currentFrame;
             health -= amount;
             if (health <= 0) Kill();
             else if (!ReferenceEquals(OnDamaged, null)) OnDamaged();
@@ -125,6 +130,21 @@ namespace DDaikontin
             }
 
             velocity *= 0.99;
+
+            if (behavior == Behavior.Boss) //Boss sits still and rotates back and forth a bit for now
+            {
+                FireWeapon(180, currentFrame);
+                if (behaviorState == 0)
+                {
+                    facing += 0.001;
+                    if (facing > Math.PI / 2 + 0.06) behaviorState = 1;
+                }
+                else if (behaviorState == 1)
+                {
+                    facing -= 0.001;
+                    if (facing < Math.PI / 2 - 0.06) behaviorState = 0;
+                }
+            }
         }
     }
 }

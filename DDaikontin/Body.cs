@@ -32,8 +32,7 @@ namespace DDaikontin
         /// <returns></returns>
         public bool CollidesWith(Body other)
         {
-            //TODO: Needs to account for both objects' facing
-            return this.collider.CollidesWith(this.posX, this.posY, other.collider, other.posX, other.posY);
+            return this.collider.CollidesWith(this.posX, this.posY, this.facing, other.collider, other.posX, other.posY, other.facing);
         }
 
         public void ApplyForce(double force, double direction)
