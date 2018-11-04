@@ -25,31 +25,11 @@ namespace DDaikontin
 
         public void init()
         {
-            var playerShipGfx = new UnitGraphics(Pens.White, new List<PointF>() {
-                    new PointF(16,0),
-                    new PointF(-16,14),
-                    new PointF(-6,0),
-                    new PointF(-16,-14),
-                    new PointF(16,0)
-                });
-            var enemyShipGfx = new UnitGraphics(Pens.Red, new List<PointF>() {
-                    new PointF(18,0),
-                    new PointF(-18,16),
-                    new PointF(-6,0),
-                    new PointF(-18,-16),
-                    new PointF(18,0)
-                });
-            currentPlayer = new ShipBase(playerShipGfx, Behavior.Player, 3, 6, 50, 50, new List<PointF>()
-                {
-                    new PointF(16,0),
-                    new PointF(-18,16),
-                    new PointF(-18, -16)
-                });
+            var playerShipGfx = new UnitGraphics(Pens.White, LineArt.PlayerShip);
+            var enemyShipGfx = new UnitGraphics(Pens.Red, LineArt.PlayerShip);
+            currentPlayer = new ShipBase(playerShipGfx, Behavior.Player, 3, 6, 50, 50, LineArt.PlayerShootPoints);
             playerShips.Add(currentPlayer);
-            enemyShips.Add(new ShipBase(enemyShipGfx, Behavior.ShootConstantly, 5, 40, 400, 400, new List<PointF>()
-                {
-                    new PointF(18,0)
-                }));
+            enemyShips.Add(new ShipBase(enemyShipGfx, Behavior.ShootConstantly, 5, 40, 400, 400, LineArt.PlayerShootPoints1));
         }
     }
 }
