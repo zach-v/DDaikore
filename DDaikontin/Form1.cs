@@ -14,6 +14,8 @@ namespace DDaikontin
 {
     public partial class Form1 : Form
     {
+        private const ushort GameVersion = 1;
+
         Core core = new Core();
         private int enterKey = 0;
         private int upArrowKey = 0;
@@ -31,12 +33,13 @@ namespace DDaikontin
             InitializeComponent();
             new Thread(() =>
             {
+                core.GameVersion = GameVersion;
                 core.MenuLoop = MenuLoop;
                 core.MenuDraw = MenuDraw;
                 core.GameLoop = GameLoop;
                 core.GameDraw = MenuDraw; //Drawing is done in the Paint method for now
 
-                regKeys();
+                registerInputs();
 
                 core.Begin();
             }).Start();
@@ -44,13 +47,13 @@ namespace DDaikontin
 
         public void MenuLoop()
         {
-            if (core.GetInputState(enterKey) == Core.InputState.JustPressed)
+            if (core.GetInputState(enterKey) == InputState.JustPressed)
             {
                 ResetGameState();
                 core.menuIndex = -1;
             }
-            else if (core.GetInputState(upArrowKey) == Core.InputState.JustPressed) core.menuOption = (core.menuOption + 1) % 2;
-            else if (core.GetInputState(downArrowKey) == Core.InputState.JustPressed) core.menuOption = core.menuOption == 0 ? 1 : core.menuOption - 1;
+            else if (core.GetInputState(upArrowKey) == InputState.JustPressed) core.menuOption = (core.menuOption + 1) % 2;
+            else if (core.GetInputState(downArrowKey) == InputState.JustPressed) core.menuOption = core.menuOption == 0 ? 1 : core.menuOption - 1;
         }
 
         public void MenuDraw()
@@ -94,27 +97,21 @@ namespace DDaikontin
             g.TranslateTransform((float)-gs.currentPlayer.posX + pictureBox1.Width / 2, (float)-gs.currentPlayer.posY + pictureBox1.Height / 2);
             var oldTransform = g.Transform;
 
-            for (double x = gs.currentPlayer.posX - (pictureBox1.Width / 2); x< gs.currentPlayer.posX + (pictureBox1.Width / 2); x += 256)
+            var starSeed = new PseudoRandom();
+            for (double x = gs.currentPlayer.posX - (pictureBox1.Width / 2); x < gs.currentPlayer.posX + (pictureBox1.Width / 2); x += 256)
             {
-                int squareX = (int) Math.Floor(x / 256);
-                for (double y = gs.currentPlayer.posX - (pictureBox1.Width / 2); y < gs.currentPlayer.posX + (pictureBox1.Width / 2); y += 256)
+                int squareX = (int)Math.Floor(x / 256);
+                for (double y = gs.currentPlayer.posY - (pictureBox1.Height / 2); y < gs.currentPlayer.posY + (pictureBox1.Height / 2); y += 256)
                 {
                     int squareY = (int)Math.Floor(y / 256);
-                    var randomSeed = (squareX * 19204 + squareY * 421) & (int.MaxValue);
-                    var lastRandom = 313;
+                    starSeed.lastValue = (uint)(((long)squareX * 13 + squareY * 58) & uint.MaxValue);
+                    int numberOfStars = Math.Min(8 + ((int)(starSeed.Next() & 0xF00) >> 8), 25); //10 to 25 stars
 
-                    for (int i = 0; i < 10; i++)
+                    for (int i = 0; i < numberOfStars; i++)
                     {
-                        lastRandom = (lastRandom * 46545 + 23132) & 511;
-                        var starX = lastRandom;
-                        lastRandom = (lastRandom * 46545 + 23132) & 511;
-                        var starY = lastRandom;
-                        if (starX < 256 & starY < 256)
-                        {
-                            var xc = squareX * 256 + starX;
-                            var yc = squareY * 256 + starY;
-                            g.DrawLine(Pens.White, xc, yc, xc, yc);
-                        }
+                        var xc = (float)squareX * 256 + (starSeed.Next() & 255);
+                        var yc = (float)squareY * 256 + (starSeed.Next() & 255);
+                        g.DrawLine(Pens.White, xc, yc, xc, yc + 1);
                     }
                 }
             }
@@ -141,7 +138,7 @@ namespace DDaikontin
             }
         }
 
-        private void regKeys()
+        private void registerInputs()
         {
             enterKey = core.RegisterInput(Keys.Enter);
             upArrowKey = core.RegisterInput(Keys.Up);
@@ -292,23 +289,23 @@ namespace DDaikontin
         // Will check for these keys being used and will perform some action
         public void checkKeys()
         {
-            if ((core.GetInputState(leftArrowKey) == Core.InputState.Held) || (core.GetInputState(aKey) == Core.InputState.Held))
+            if ((core.GetInputState(leftArrowKey) == InputState.Held) || (core.GetInputState(aKey) == InputState.Held))
             {
                 gs.currentPlayer.facing -= 0.037;
             }
-            if ((core.GetInputState(rightArrowKey) == Core.InputState.Held) || (core.GetInputState(dKey) == Core.InputState.Held))
+            if ((core.GetInputState(rightArrowKey) == InputState.Held) || (core.GetInputState(dKey) == InputState.Held))
             {
                 gs.currentPlayer.facing += 0.037;
             }
-            if ((core.GetInputState(upArrowKey) == Core.InputState.Held) || (core.GetInputState(wKey) == Core.InputState.Held))
+            if ((core.GetInputState(upArrowKey) == InputState.Held) || (core.GetInputState(wKey) == InputState.Held))
             {
                 gs.currentPlayer.applyForce(0.045, gs.currentPlayer.facing);
             }
-            if ((core.GetInputState(downArrowKey) == Core.InputState.Held) || (core.GetInputState(sKey) == Core.InputState.Held))
+            if ((core.GetInputState(downArrowKey) == InputState.Held) || (core.GetInputState(sKey) == InputState.Held))
             {
                 gs.currentPlayer.velocity *= 0.93;
             }
-            if (core.GetInputState(spaceKey) == Core.InputState.Held)
+            if (core.GetInputState(spaceKey) == InputState.Held)
             {
                 if (gs.currentPlayer.bulletMode == 0)
                     if (core.frameCounter - gs.currentPlayer.lastFrameFired > 5)

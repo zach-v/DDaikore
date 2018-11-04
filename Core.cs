@@ -7,11 +7,20 @@ using System.Diagnostics;
 using System.Threading;
 using System.Windows.Forms;
 using System.Runtime.InteropServices;
+using System.Net;
+using System.Net.Sockets;
+using System.IO;
 
 namespace DDaikore
 {
     public class Core
     {
+        public readonly ushort CoreVersion = 0;
+        /// <summary>
+        /// Must be set to 1 or higher for networking
+        /// </summary>
+        public ushort GameVersion = 0;
+
         /// <summary>
         /// Menu procesing. Occurs 120 times per second.
         /// Will only be called if in a menu (menuIndex != -1)
@@ -22,7 +31,18 @@ namespace DDaikore
         /// Will only be called if not in a menu (menuIndex = -1)
         /// </summary>
         public Action GameLoop;
-        public Action ReceiveMessage; //Network comms
+        /// <summary>
+        /// When the frame counter freezes due to communications latency, this will be called instead of GameLoop or MenuLoop until the situation improves or the peer disconnects.
+        /// </summary>
+        public Action CommFreezeMenu;
+        /// <summary>
+        /// Network connection made successfully.
+        /// </summary>
+        public Action Connected;
+        /// <summary>
+        /// Message received over the network. This should contain game state changes, complete with frame counter, since the last message.
+        /// </summary>
+        public Action<byte[]> ReceiveMessage;
         /// <summary>
         /// Will only be called if in a menu (menuIndex != -1)
         /// </summary>
@@ -40,80 +60,20 @@ namespace DDaikore
         /// <summary>
         /// Computational frame counter
         /// </summary>
-        public long frameCounter = 0;
+        public long frameCounter { get; private set; } = 0;
         protected bool exiting = false;
 
-        #region Input
-        [DllImport("user32.dll", CharSet = CharSet.Auto, ExactSpelling = true)]
-        private static extern GetKeyStateRet GetKeyState(int keyCode);
-
-        [Flags]
-        private enum GetKeyStateRet : ushort
-        {
-            None = 0,
-            Down = 0x8000,
-            Toggled = 0x1
-        }
-
-        public enum InputState
-        {
-            NotHeld, JustReleased, Held, JustPressed
-        }
-
-        private class InputInfo
-        {
-            public InputState state;
-            public int controller; //-2 is mouse, -1 is keyboard, 0+ are game controllers (arbitrary count, hence why I shouldn't use an enum)
-            public int button;
-        }
-
-        /// <summary>
-        /// Item1 is the state; Item2 is additional info required to figure out what we're looking for internally
-        /// </summary>
-        private List<InputInfo> DigitalInputs = new List<InputInfo>();
-
-        /// <summary>
-        /// Request input state using the value returned by RegisterInput for the desired key
-        /// </summary>
-        /// <param name="index"></param>
-        /// <returns></returns>
-        public InputState GetInputState(int index)
-        {
-            return DigitalInputs[index].state;
-        }
+        protected Input controls = new Input();
 
         public int RegisterInput(Keys key)
         {
-            DigitalInputs.Add(new InputInfo { state = InputState.NotHeld, controller = -1, button = (int)key });
-            return DigitalInputs.Count - 1;
+            return controls.RegisterInput(key);
         }
 
-        private void UpdateInputs()
+        public InputState GetInputState(int index)
         {
-            //Loop through all registered inputs and update their states
-            foreach (var input in DigitalInputs)
-            {
-                if (input.controller == -1) //Keyboard
-                {
-                    var keyDown = GetKeyState(input.button).HasFlag(GetKeyStateRet.Down);
-                    if (keyDown)
-                    {
-                        if (input.state == InputState.NotHeld) input.state = InputState.JustPressed;
-                        else input.state = InputState.Held;
-                    }
-                    else
-                    {
-                        if (input.state == InputState.Held) input.state = InputState.JustReleased;
-                        else input.state = InputState.NotHeld;
-                    }
-                }
-                else
-                {
-                    throw new NotImplementedException("Mouse and game controllers not yet supported");
-                }
-            }
+            return controls.GetInputState(index);
         }
-        #endregion
 
         #region Audio
         private List<SoundEffect> LoadedSounds = new List<SoundEffect>();
@@ -161,8 +121,210 @@ namespace DDaikore
             }
             return frames;
         }
+        #endregion
 
+        #region Comm
+        private long lastCommReceived;
+        private int permissibleCommFramesAhead = 120; //You can get up to about a second ahead (slows down the framerate as you approach this number)
+        private int slowdownLagFrames = 20; //Decelerate the framerate as you approach this many frames since the last comm message received
+        private const int port = 53252;
+        private Socket connection = null;
+        private int headerLength = 4; //Message length is in the header (nothing else is currently necessary)
+        private List<byte[]> incomingMessages = new List<byte[]>(); //Incoming network messages. Should be one at a time (per connection)
+        private PseudoRandom safeRnd = new PseudoRandom();
+        private bool actedAsListener = false;
+        private Thread commThread, commHostThread;
+        private Mutex acceptingConnectionMutex = new Mutex(); //When this is locked, the game loop should freeze entirely
 
+        //Note about random number generators: 
+        //You never have to sync the seed if you generate a random number exactly once per frame and you allow both clients to calculate every frame.
+
+        /// <summary>
+        /// Network multiplayer-safe random number. Changes once per frame to keep clients in sync in case random numbers may be generated due to player behavior.
+        /// </summary>
+        public double RandomDouble()
+        {
+            return (double)safeRnd.lastValue / ((double)uint.MaxValue + 1);
+        }
+
+        /// <summary>
+        /// Network multiplayer-safe random number. Changes once per frame to keep clients in sync in case random numbers may be generated due to player behavior.
+        /// </summary>
+        public int RandomInt(int maxValue)
+        {
+            return (int)(safeRnd.lastValue % maxValue); //Modulus hurts the uniform distribution, especially with large maxValue, but I'm not worried about it
+        }
+
+        private void CommInit()
+        {
+            lastCommReceived = 0;
+
+            commThread = new Thread(RunComms);
+            commThread.Start();
+        }
+
+        /// <summary>
+        /// When expecting another player to connect to you, call this
+        /// </summary>
+        public void ListenForIncomingConnection()
+        {
+            if (GameVersion == 0) throw new Exception("Game version must be set for networking");
+            commHostThread = new Thread(CommListen);
+            commHostThread.Start();
+        }
+
+        public void StopListening()
+        {
+            if (commHostThread != null && commHostThread.IsAlive)
+            {
+                commHostThread.Abort();
+                connection.Close();
+                commHostThread = null;
+            }
+        }
+
+        /// <summary>
+        /// This must be the first message sent after connecting to a peer. Lock acceptingConnectionMutex around this call.
+        /// </summary>
+        private void SendInitialMessage()
+        {
+            //Send the initial message (Core version, game version, lastRandom but modified to avoid a sign error, and frameCount)
+            var buffer = new byte[32];
+            var tBytes = BitConverter.GetBytes((ushort)IPAddress.HostToNetworkOrder(CoreVersion));
+            tBytes.CopyTo(buffer, 0);
+            tBytes = BitConverter.GetBytes((ushort)IPAddress.HostToNetworkOrder(GameVersion));
+            tBytes.CopyTo(buffer, 2);
+            safeRnd.lastValue &= 0x7FFFFF7F; //Mask to avoid sign issues
+            tBytes = BitConverter.GetBytes((int)IPAddress.HostToNetworkOrder(safeRnd.lastValue));
+            tBytes.CopyTo(buffer, 4);
+            tBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(frameCounter));
+            tBytes.CopyTo(buffer, 8);
+
+            SendCommMessage(buffer);
+        }
+
+        private void CommListen()
+        {
+            var localEndPoint = new IPEndPoint(IPAddress.Any, port);
+            connection = new Socket(IPAddress.Any.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            connection.Bind(localEndPoint);
+            connection.Listen(1);
+            actedAsListener = true;
+
+            while (true)
+            {
+                Socket client;
+                try
+                {
+                    lock (acceptingConnectionMutex)
+                    {
+                        client = connection.Accept();
+                        connection.Close();
+                        connection = client;
+                        SendInitialMessage();
+                    }
+                    return;
+                }
+                catch { }
+                Thread.Sleep(100);
+            }
+        }
+
+        public void Connect(IPAddress ip)
+        {
+            if (connection != null) connection.Close();
+            actedAsListener = false;
+            IPEndPoint remoteEndPoint = new IPEndPoint(ip, port);
+            connection = new Socket(ip.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            connection.ReceiveTimeout = 10000; //Timeout is 10 seconds
+            //Connect on a new thread so we don't block the client (though we could just do it in RunComms)
+            new Thread(() => {
+                connection.Connect(remoteEndPoint);
+            }).Start();
+        }
+
+        private void RunComms()
+        {
+            var buffer = new byte[1024 * 1024]; //A megabyte buffer? Why not!
+
+            while (true)
+            {
+                bool wasAlreadyConnected = false;
+                while (connection != null && connection.Connected)
+                {
+                    try
+                    {
+                        var receivedBytes = 0;
+                        //Get the message header
+                        while (receivedBytes < headerLength)
+                        {
+                            receivedBytes += connection.Receive(buffer, receivedBytes, headerLength - receivedBytes, SocketFlags.None);
+                        }
+                        //Now we know what to expect; wait for the rest of it
+                        receivedBytes = 0;
+                        //Get the first 32 bits from the buffer as an int the endianness-safe way
+                        var bodyLength = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(buffer, 0));
+                        while (receivedBytes < bodyLength)
+                        {
+                            receivedBytes += connection.Receive(buffer, receivedBytes, bodyLength - receivedBytes, SocketFlags.None);
+                        }
+
+                        if (wasAlreadyConnected) //Continuing connection -> expect a message controlled by the game, not by Core
+                        {
+                            var msgBuffer = new byte[bodyLength];
+                            Array.Copy(buffer, msgBuffer, bodyLength);
+                            lock (incomingMessages)
+                            {
+                                incomingMessages.Add(msgBuffer);
+                                lastCommReceived = frameCounter;
+                            }
+                        }
+                        else //The first message received is different than the others. It has to check the program version and get the random seed.
+                        {
+                            lock (acceptingConnectionMutex)
+                            {
+                                if (actedAsListener) //Only the peer that accepted the other one's connection request takes the other's data
+                                {
+                                    //First two bytes are Core version number; next are the game version number.
+                                    var clientCoreVersion = IPAddress.NetworkToHostOrder(BitConverter.ToInt16(buffer, 0));
+                                    var clientGameVersion = IPAddress.NetworkToHostOrder(BitConverter.ToInt16(buffer, 2));
+                                    //Next four bytes are lastRandom (has to have been masked to avoid an exception due to signed numbers)
+                                    safeRnd.lastValue = (uint)IPAddress.NetworkToHostOrder(BitConverter.ToInt32(buffer, 4));
+                                    //Next four bytes are the frame counter we're going to start at
+                                    frameCounter = IPAddress.NetworkToHostOrder(BitConverter.ToInt64(buffer, 8));
+                                }
+                                //Ready to play multiplayer!
+                                Connected();
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        //No additional code needed; we got disconnected for whatever reason, so fall out of the while (connection.Connected) loop
+                    }
+                    Thread.Sleep(1);
+                    wasAlreadyConnected = true;
+                }
+                Thread.Sleep(10);
+            }
+        }
+
+        //TODO: Maintain a queue of events that can cause the clients to desync (should just be player actions, such ash JustPressed or JustReleased, *and the results thereof*)
+        //Example: player pressed Up; velocity is now this (not from queue, but current); position is now this (ditto); player health now 3; enemy health now 0
+        //When you receive a message, differences between its recorded events and yours should be rectified and the solution sent with the next message.
+        
+        //The best possible way to work would be tracking player JustPressed and JustReleased messages and recalculating what the current state of the game should be if those actions had been taken.
+        //But that's very hard to do with the way that games usually get developed and with the sheer amount of data that can change frame to frame.
+
+        public void SendCommMessage(byte[] message)
+        {
+            //Prepend the message length and send it
+            var buffer = new byte[message.Length + 4];
+            var msgLen = BitConverter.GetBytes(IPAddress.HostToNetworkOrder((int)message.Length));
+            msgLen.CopyTo(buffer, 0);
+            message.CopyTo(buffer, 4);
+            connection.Send(buffer);
+        }
         #endregion
 
         static void Main(string[] args)
@@ -222,49 +384,87 @@ namespace DDaikore
             var drawStart = lastTicks;
             var millisecond = Stopwatch.Frequency / 1000; //One millisecond
             var skippedFrames = 0;
+            var commsOK = true;
+
+            CommInit();
+
             while (!exiting)
             {
-                if (sw.ElapsedTicks >= nextTicks)
+                lock (acceptingConnectionMutex)
                 {
-                    UpdateInputs();
-                    //Don't try to catch up if you're more than 60 frames behind
-                    if (sw.ElapsedTicks > nextTicks + targetTickRate * 60)
+                    if (sw.ElapsedTicks >= nextTicks)
                     {
-                        nextTicks = sw.ElapsedTicks;
-                    }
-                    nextTicks += targetTickRate;
-
-                    //Always run the processing loops
-                    if (menuIndex != -1)
-                    {
-                        if (!ReferenceEquals(MenuLoop, null)) MenuLoop();
-                    }
-                    else if (!ReferenceEquals(GameLoop, null)) GameLoop();
-
-                    //Draw if we have plenty of time
-                    if (nextTicks - sw.ElapsedTicks >= drawTime || skippedFrames >= 8)
-                    {
-                        drawStart = sw.ElapsedTicks;
-                        if (menuIndex != -1)
+                        controls.UpdateInputs();
+                        //Pass on any received comm messages
+                        lock (incomingMessages)
                         {
-                            if (!ReferenceEquals(MenuDraw, null)) MenuDraw();
+                            while (incomingMessages.Count != 0)
+                            {
+                                ReceiveMessage(incomingMessages.First());
+                                incomingMessages.RemoveAt(0);
+                            }
                         }
-                        else if (!ReferenceEquals(GameDraw, null)) GameDraw();
+                        //Don't try to catch up if you're more than 60 frames behind
+                        if (sw.ElapsedTicks > nextTicks + targetTickRate * 60)
+                        {
+                            nextTicks = sw.ElapsedTicks;
+                        }
+                        nextTicks += targetTickRate;
 
-                        //Adjust estimated draw time
-                        drawTime = (drawTime * (movingAverageTicks - 1) + sw.ElapsedTicks - drawStart) / movingAverageTicks;
-                        if (drawTime > targetTickRate * 100) drawTime = targetTickRate * 5; //Cap so it doesn't have trouble catching up if one frame took forever
-                        skippedFrames = 0;
+                        if (connection == null || !connection.Connected) lastCommReceived = frameCounter; //If there's no net connection, no slowing down.
+                        var framesTilFreezeDueToComms = Math.Max(lastCommReceived + permissibleCommFramesAhead - frameCounter, 0); //Cap at 0 minimum
+                        if (framesTilFreezeDueToComms < slowdownLagFrames)
+                        {
+                            //Scales at 1x + (0.24x up to 5x)
+                            nextTicks += targetTickRate * 5 / (framesTilFreezeDueToComms + 1);
+                        }
+
+                        //Always run the processing loops (unless in comm-based freeze)
+                        if (framesTilFreezeDueToComms != 0)
+                        {
+                            if (menuIndex != -1)
+                            {
+                                if (!ReferenceEquals(MenuLoop, null)) MenuLoop();
+                            }
+                            else if (!ReferenceEquals(GameLoop, null)) GameLoop();
+                            safeRnd.Next();
+                            commsOK = true; //To avoid race condition with framesTilFreezeDueToComms and increasing frameCounter
+                        }
+                        else
+                        {
+                            //Make some kind of menus available to player during comm freeze, even if gameplay cannot continue
+                            CommFreezeMenu();
+                            commsOK = false;
+                        }
+
+                        //Draw if we have plenty of time
+                        if (nextTicks - sw.ElapsedTicks >= drawTime || skippedFrames >= 8)
+                        {
+                            drawStart = sw.ElapsedTicks;
+                            if (menuIndex != -1)
+                            {
+                                if (!ReferenceEquals(MenuDraw, null)) MenuDraw();
+                            }
+                            else if (!ReferenceEquals(GameDraw, null)) GameDraw();
+
+                            //Adjust estimated draw time
+                            drawTime = (drawTime * (movingAverageTicks - 1) + sw.ElapsedTicks - drawStart) / movingAverageTicks;
+                            if (drawTime > targetTickRate * 100) drawTime = targetTickRate * 5; //Cap so it doesn't have trouble catching up if one frame took forever
+                            skippedFrames = 0;
+                        }
+                        else skippedFrames++; //Track frame skipping so even on slow machines it will draw once in a while--once every 8 processing frames
+                        if (commsOK) frameCounter++;
                     }
-                    else skippedFrames++; //Track frame skipping so even on slow machines it will draw once in a while--once every 8 processing frames
-                    frameCounter++;
                 }
 
                 //Sleep if we have time to do so
                 if (nextTicks - sw.ElapsedTicks > millisecond) Thread.Sleep(1);
             }
 
+            commThread.Abort();
+            if (commHostThread != null && commHostThread.IsAlive) commHostThread.Abort();
             ap.Close();
+            Thread.Sleep(100); //Wait for ap threads to stop; still possible to throw an exception, but we're exiting anyway.
         }
 
 
