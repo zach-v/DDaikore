@@ -14,6 +14,7 @@ namespace DDaikontin
         public List<ShipBase> enemyShips;
         public List<Projectile> playerProjectiles;
         public List<Projectile> enemyProjectiles;
+        public List<ShipBase> inactivatedEnemies = new List<ShipBase>();
 
         UnitGraphics playerShipGfx = new UnitGraphics(Pens.White, LineArt.PlayerShip);
         UnitGraphics enemyShipGfx = new UnitGraphics(Pens.Red, LineArt.PlayerShip);

@@ -425,6 +425,39 @@ namespace DDaikontin
                 }
                 //TODO: Other collisions, player inputs, stuff, things, etc.
             }
+
+            var maxDist = 1000;
+            //if frame number & 63 is 0
+            var subCounter = core.frameCounter & 63;
+            if (subCounter == 0)
+            {
+                //for each enemy
+                for (int i = gs.enemyShips.Count - 1; i >= 0; i--)
+                {
+                    //If enemy is far away
+                    if (Math.Abs(gs.enemyShips[i].posX - gs.currentPlayer.posX) >= maxDist && Math.Abs(gs.enemyShips[i].posY - gs.currentPlayer.posY) >= maxDist)
+                    {
+                        gs.inactivatedEnemies.Add(gs.enemyShips[i]);
+                        gs.enemyShips.RemoveAt(i);
+                        //deactivate enemy
+                    }
+                }
+            }
+            else if (subCounter == 32)
+            {
+                //else if frame number & 63 is 32
+                //for each enemy in inactive list
+                for (int i = gs.inactivatedEnemies.Count - 1; i >= 0; i--)
+                {
+                    //if enemy is close
+                    if (Math.Abs(gs.inactivatedEnemies[i].posX - gs.currentPlayer.posX) < maxDist && Math.Abs(gs.inactivatedEnemies[i].posY - gs.currentPlayer.posY) < maxDist)
+                    {
+                        //activate enemy
+                        gs.enemyShips.Add(gs.inactivatedEnemies[i]);
+                        gs.inactivatedEnemies.RemoveAt(i);
+                    }
+                }
+            }
         } // End of Gameloop
 
         public void onEnemyDamagedBasic()
