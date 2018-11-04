@@ -12,17 +12,25 @@ using DDaikore;
 
 namespace DDaikontin
 {
-    public partial class Form1 : Form {
+    public partial class Form1 : Form
+    {
         Core core = new Core();
         private int enterKey = 0;
         private int upArrowKey = 0;
         private int downArrowKey = 0;
         private int leftArrowKey = 0;
         private int rightArrowKey = 0;
+        private int wKey = 0;
+        private int sKey = 0;
+        private int aKey = 0;
+        private int dKey = 0;
+        private int spaceKey = 0;
 
-        public Form1() {
+        public Form1()
+        {
             InitializeComponent();
-            new Thread(() => {
+            new Thread(() =>
+            {
                 core.MenuLoop = MenuLoop;
                 core.MenuDraw = MenuDraw;
                 core.GameLoop = GameLoop;
@@ -34,137 +42,291 @@ namespace DDaikontin
             }).Start();
         }
 
-        public void MenuLoop() {
-            if (core.GetInputState(enterKey) == Core.InputState.JustPressed) {
+        public void MenuLoop()
+        {
+            if (core.GetInputState(enterKey) == Core.InputState.JustPressed)
+            {
                 ResetGameState();
                 core.menuIndex = -1;
-            } else if (core.GetInputState(upArrowKey) == Core.InputState.JustPressed) core.menuOption = (core.menuOption + 1) % 2;
+            }
+            else if (core.GetInputState(upArrowKey) == Core.InputState.JustPressed) core.menuOption = (core.menuOption + 1) % 2;
             else if (core.GetInputState(downArrowKey) == Core.InputState.JustPressed) core.menuOption = core.menuOption == 0 ? 1 : core.menuOption - 1;
         }
 
-        public void MenuDraw() {
+        public void MenuDraw()
+        {
             pictureBox1.Invalidate();
         }
 
-        private void Form1_FormClosing(object sender, FormClosingEventArgs e) {
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
             core.Exit();
         }
 
-        private void pictureBox1_Paint(object sender, PaintEventArgs e) {
-            var g = e.Graphics;
-            //Clear the background
-            g.FillRectangle(Brushes.Black, 0, 0, pictureBox1.Width, pictureBox1.Height);
+        private void pictureBox1_Paint(object sender, PaintEventArgs e)
+        {
+            lock (core)
+            {
+                var g = e.Graphics;
+                //Clear the background
+                g.FillRectangle(Brushes.Black, 0, 0, pictureBox1.Width, pictureBox1.Height);
 
-            if (core.menuIndex >= 0) {
-                drawMenu(g);
-            }
-            if (core.menuIndex == -1) {
-                drawGame(g);
+                if (core.menuIndex >= 0)
+                {
+                    drawMenu(g);
+                }
+                if (core.menuIndex == -1)
+                {
+                    drawGame(g);
+                }
             }
         }
 
-        private void drawMenu(Graphics g) {
+        private void drawMenu(Graphics g)
+        {
             g.DrawString("Daikontinum", this.Font, Brushes.White, new PointF(20, 10));
             g.DrawString("Play", this.Font, core.menuOption == 0 ? Brushes.Blue : Brushes.White, new PointF(20, 40));
             g.DrawString("Exit", this.Font, core.menuOption == 1 ? Brushes.Blue : Brushes.White, new PointF(20, 60));
         }
 
-        //TODO: make more comments on code
-        private void drawGame(Graphics g) {
-            var debugGfx = new UnitGraphics(Pens.AliceBlue);
-            g.TranslateTransform((float) -gs.currentPlayer.posX + pictureBox1.Width / 2, (float) -gs.currentPlayer.posY + pictureBox1.Height / 2);
+        private void drawGame(Graphics g)
+        {
+            g.TranslateTransform((float)-gs.currentPlayer.posX + pictureBox1.Width / 2, (float)-gs.currentPlayer.posY + pictureBox1.Height / 2);
             var oldTransform = g.Transform;
-            foreach (var ship in gs.playerShips.Union(gs.enemyShips)) {
+
+            for (double x = gs.currentPlayer.posX - (pictureBox1.Width / 2); x< gs.currentPlayer.posX + (pictureBox1.Width / 2); x += 256)
+            {
+                int squareX = (int) Math.Floor(x / 256);
+                for (double y = gs.currentPlayer.posX - (pictureBox1.Width / 2); y < gs.currentPlayer.posX + (pictureBox1.Width / 2); y += 256)
+                {
+                    int squareY = (int)Math.Floor(y / 256);
+                    var randomSeed = (squareX * 19204 + squareY * 421) & (int.MaxValue);
+                    var lastRandom = 313;
+
+                    for (int i = 0; i < 10; i++)
+                    {
+                        lastRandom = (lastRandom * 46545 + 23132) & 511;
+                        var starX = lastRandom;
+                        lastRandom = (lastRandom * 46545 + 23132) & 511;
+                        var starY = lastRandom;
+                        if (starX < 256 & starY < 256)
+                        {
+                            var xc = squareX * 256 + starX;
+                            var yc = squareY * 256 + starY;
+                            g.DrawLine(Pens.White, xc, yc, xc, yc);
+                        }
+                    }
+                }
+            }
+
+            foreach (var projectile in gs.projectiles)
+            {
+                g.Transform = oldTransform;
+                g.TranslateTransform((float)projectile.posX, (float)projectile.posY);
+                g.DrawLines(projectile.uGraphics.color, projectile.uGraphics.points.ToArray());
+            }
+
+            foreach (var ship in gs.playerShips.Union(gs.enemyShips))
+            {
                 g.Transform = oldTransform;
                 g.TranslateTransform((float)ship.posX, (float)ship.posY);
                 g.RotateTransform((float)(ship.facing / Math.PI * 180));
-
+                
                 g.DrawLines(ship.uGraphics.color, ship.uGraphics.points.ToArray());
 
-                foreach (var circle in ship.collider.dCircles) {
-                    g.DrawEllipse(debugGfx.color, (float)(-circle.Radius + circle.X), (float)(-circle.Radius + circle.Y), (float)circle.Radius * 2, (float)circle.Radius * 2);
-                }
+                //    foreach (var circle in ship.collider.dCircles) {
+                //        g.DrawEllipse(Pens.Aqua, (float)(-circle.Radius + circle.X), (float)(-circle.Radius + circle.Y), (float)circle.Radius * 2, (float)circle.Radius * 2);
+                //    }
                 g.ResetTransform();
             }
         }
 
-        private void regKeys() {
+        private void regKeys()
+        {
             enterKey = core.RegisterInput(Keys.Enter);
             upArrowKey = core.RegisterInput(Keys.Up);
             downArrowKey = core.RegisterInput(Keys.Down);
             leftArrowKey = core.RegisterInput(Keys.Left);
             rightArrowKey = core.RegisterInput(Keys.Right);
+            wKey = core.RegisterInput(Keys.W);
+            sKey = core.RegisterInput(Keys.S);
+            aKey = core.RegisterInput(Keys.A);
+            dKey = core.RegisterInput(Keys.D);
+            spaceKey = core.RegisterInput(Keys.Space);
         }
 
-        public class GameState {
+        public class GameState
+        {
             public List<ShipBase> playerShips;
             public List<ShipBase> enemyShips;
+            public List<Projectile> projectiles;
+            public List<BackgroundItem> backitems;
             public ShipBase currentPlayer;
 
-            public GameState() {
+            public GameState()
+            {
                 playerShips = new List<ShipBase>();
                 enemyShips = new List<ShipBase>();
+                projectiles = new List<Projectile>();
+                backitems = new List<BackgroundItem>();
             }
 
-            public void init() {
+            public void init()
+            {
                 var playerShipGfx = new UnitGraphics(Pens.White, new List<PointF>() {
-                    new PointF(0,0),
-                    new PointF(10,0),
-                    new PointF(0,0)
+                    new PointF(16,0),
+                    new PointF(-16,14),
+                    new PointF(-6,0),
+                    new PointF(-16,-14),
+                    new PointF(16,0)
                 });
                 var enemyShipGfx = new UnitGraphics(Pens.Red, new List<PointF>() {
-                    new PointF(0,0),
-                    new PointF(10,0),
-                    new PointF(0,0)
+                    new PointF(18,0),
+                    new PointF(-18,16),
+                    new PointF(-6,0),
+                    new PointF(-18,-16),
+                    new PointF(18,0)
                 });
-                currentPlayer = new ShipBase(playerShipGfx, 50, 50);
+                currentPlayer = new ShipBase(playerShipGfx, 50, 50, new List<PointF>()
+                {
+                    new PointF(16,0),
+                    new PointF(-18,16),
+                    new PointF(-18, -16)
+                });
                 playerShips.Add(currentPlayer);
-                enemyShips.Add(new ShipBase(enemyShipGfx, 400, 400));
+                enemyShips.Add(new ShipBase(enemyShipGfx, 400, 400, new List<PointF>()
+                {
+                    new PointF(18,0)
+                }));
             }
 
+            public void shooting(bool bulletType, ShipBase ship, int lifeTime, long currentFrame)
+            {
+                ship.lastFrameFired = currentFrame;
+                var bulletGfx = new UnitGraphics(new Pen(Color.FromArgb(255,255,255,255)), new List<PointF>()
+                {
+                    new PointF(2,0),
+                    new PointF(1, 0),
+                    new PointF(-2,0),
+                    new PointF(0, 1f)
+                });
+                ship.lastBulletIndex = (ship.lastBulletIndex + 1) % ship.bulletPoints.Count;
+                projectiles.Add(new Projectile(bulletType, ship.velocity + 4, bulletGfx, ship.facing, lifeTime, ship.posX + ship.bulletPoints[ship.lastBulletIndex].X, ship.posY + ship.bulletPoints[ship.lastBulletIndex].Y));
+            }
         }
 
         protected GameState gs;
 
-        public void ResetGameState() {
+        public void ResetGameState()
+        {
             gs = new GameState();
             gs.init();
         }
 
-        public void GameLoop() {
-            foreach (var ship in gs.playerShips.Union(gs.enemyShips)) {
-                ship.posX += ship.velocity * Math.Cos(ship.angle);
-                ship.posY += ship.velocity * Math.Sin(ship.angle);
+        public void GameLoop()
+        {
+            lock (core)
+            {
+                checkKeys();
 
-                ship.velocity *= 0.99;
-            }
+                rotateEnemies();
 
-            if (core.GetInputState(leftArrowKey) == Core.InputState.Held) {
-                gs.currentPlayer.facing -= 0.03;
-            }
-            if (core.GetInputState(rightArrowKey) == Core.InputState.Held) {
-                gs.currentPlayer.facing += 0.03;
-            }
-            if (core.GetInputState(upArrowKey) == Core.InputState.Held) {
-                gs.currentPlayer.applyForce(0.05, gs.currentPlayer.facing);
-            }
-            if (core.GetInputState(downArrowKey) == Core.InputState.Held) {
-                gs.currentPlayer.velocity *= 0.9;
-            }
+                checkProjectileLifetime();
 
-            //Physics!
-            for (var x = 0; x < gs.playerShips.Count; x++) {
-                for (var y = x + 1; y < gs.playerShips.Count; y++) {
-                    if (gs.playerShips[x].CollidesWith(gs.playerShips[y])) {
-                        //TODO: Give damage
-                        //TODO: Make ships bounce apart (get angle between ships and send them in opposite directions)
-                        gs.playerShips[x].velocity = -5;
-                        gs.playerShips[y].velocity = 5;
+                foreach (var ship in gs.playerShips.Union(gs.enemyShips))
+                {
+                    ship.posX += ship.velocity * Math.Cos(ship.angle);
+                    ship.posY += ship.velocity * Math.Sin(ship.angle);
+
+                    ship.velocity *= 0.99;
+                }
+
+                foreach (var projectile in gs.projectiles)
+                {
+                    projectile.posX += projectile.velocity * Math.Cos(projectile.angle);
+                    projectile.posY += projectile.velocity * Math.Sin(projectile.angle);
+                }
+
+                //Physics!
+                for (var x = 0; x < gs.playerShips.Count; x++)
+                {
+                    for (var y = x + 1; y < gs.playerShips.Count; y++)
+                    {
+                        if (gs.playerShips[x].CollidesWith(gs.playerShips[y]))
+                        {
+                            //TODO: Give damage
+                            //TODO: Make ships bounce apart (get angle between ships and send them in opposite directions)
+                            gs.playerShips[x].velocity = -5;
+                            gs.playerShips[y].velocity = 5;
+                        }
                     }
                 }
-            }
 
-            //TODO: Other collisions, player inputs, stuff, things, etc.
+                //TODO: Other collisions, player inputs, stuff, things, etc.
+            }
+        } // End of Gameloop
+
+        // Will rotate the enemies based on player position
+        public void rotateEnemies()
+        {
+            foreach (var enemy in gs.enemyShips)
+            {
+                var targetFacing = Math.Atan2(enemy.posY - gs.currentPlayer.posY, enemy.posX - gs.currentPlayer.posX);
+
+                targetFacing = targetFacing - enemy.facing;
+                while (targetFacing < 0)
+                    targetFacing += Math.PI * 2;
+                while (targetFacing > Math.PI * 2)
+                    targetFacing -= Math.PI * 2;
+
+                if (targetFacing < Math.PI - 0.1)
+                {
+                    enemy.facing -= 0.01;
+                }
+                if (targetFacing > Math.PI + 0.1)
+                {
+                    enemy.facing += 0.01;
+                }
+            }
+        }
+        // Will check for these keys being used and will perform some action
+        public void checkKeys()
+        {
+            if ((core.GetInputState(leftArrowKey) == Core.InputState.Held) || (core.GetInputState(aKey) == Core.InputState.Held))
+            {
+                gs.currentPlayer.facing -= 0.037;
+            }
+            if ((core.GetInputState(rightArrowKey) == Core.InputState.Held) || (core.GetInputState(dKey) == Core.InputState.Held))
+            {
+                gs.currentPlayer.facing += 0.037;
+            }
+            if ((core.GetInputState(upArrowKey) == Core.InputState.Held) || (core.GetInputState(wKey) == Core.InputState.Held))
+            {
+                gs.currentPlayer.applyForce(0.045, gs.currentPlayer.facing);
+            }
+            if ((core.GetInputState(downArrowKey) == Core.InputState.Held) || (core.GetInputState(sKey) == Core.InputState.Held))
+            {
+                gs.currentPlayer.velocity *= 0.93;
+            }
+            if (core.GetInputState(spaceKey) == Core.InputState.Held)
+            {
+                if (gs.currentPlayer.bulletMode == 0)
+                    if (core.frameCounter - gs.currentPlayer.lastFrameFired > 5)
+                        gs.shooting(true, gs.currentPlayer, 1000, core.frameCounter);
+            }
+        }
+
+        // Removes the projectile if the lifetime expires
+        public void checkProjectileLifetime()
+        {
+            for (int i = gs.projectiles.Count - 1; i >=0; i--)
+            {
+                gs.projectiles[i].lifetime -= 1;
+                if (gs.projectiles[i].lifetime <= 0)
+                {
+                    gs.projectiles.Remove(gs.projectiles[i]);
+                }
+            }
         }
     }
 }

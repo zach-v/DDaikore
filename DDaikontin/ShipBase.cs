@@ -14,22 +14,21 @@ namespace DDaikontin
         public double facing = 0;
         public double posX;
         public double posY;
+        public List<PointF> bulletPoints;
+        public int lastBulletIndex = 0;
+
+        public long lastFrameFired = 0;
+
+        public int bulletMode = 0;
 
         public UnitGraphics uGraphics;
         public DCollider collider;
-
-        public ShipBase(UnitGraphics uGraphics)
+        
+        public ShipBase(UnitGraphics uGraphics, double posX, double posY, List<PointF> bulletPoints)
         {
             this.uGraphics = uGraphics;
             this.collider = new DCollider(uGraphics);
-            this.posX = 10;
-            this.posY = 10;
-        }
-
-        public ShipBase(UnitGraphics uGraphics, double posX, double posY)
-        {
-            this.uGraphics = uGraphics;
-            this.collider = new DCollider(uGraphics);
+            this.bulletPoints = bulletPoints;
             this.posX = posX;
             this.posY = posY;
         }
