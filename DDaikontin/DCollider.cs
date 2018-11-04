@@ -8,13 +8,12 @@ namespace DDaikontin
 {
     public class DCollider
     {
-        //TODO: make private later
-        public List<DCircle> dCircles = new List<DCircle>();
-
-        public static void test()
-        {
-            new DCollider(0, 1, 3, 3, 5, 3);
-        }
+#if DEBUG
+        public //So we can draw the hitboxes
+#else
+        protected
+#endif
+            List<DCircle> dCircles = new List<DCircle>();
 
         /// <summary>
         /// Create a collider with the given circles (a list of x, y, rad, [x, y, rad, [...]])

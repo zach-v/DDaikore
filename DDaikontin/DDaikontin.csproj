@@ -49,6 +49,7 @@
     <Compile Include="BackgroundItem.cs" />
     <Compile Include="DCircle.cs" />
     <Compile Include="DCollider.cs" />
+    <Compile Include="GameState.cs" />
     <Compile Include="Projectile.cs" />
     <Compile Include="ShipBase.cs" />
     <Compile Include="Form1.cs">

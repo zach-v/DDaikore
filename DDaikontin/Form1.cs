@@ -14,19 +14,11 @@ namespace DDaikontin
 {
     public partial class Form1 : Form
     {
-        private const ushort GameVersion = 1;
+        private const ushort GameVersion = 1; //Increment when you make a network-compatibility-breaking change
 
-        Core core = new Core();
-        private int enterKey = 0;
-        private int upArrowKey = 0;
-        private int downArrowKey = 0;
-        private int leftArrowKey = 0;
-        private int rightArrowKey = 0;
-        private int wKey = 0;
-        private int sKey = 0;
-        private int aKey = 0;
-        private int dKey = 0;
-        private int spaceKey = 0;
+        private Core core = new Core();
+
+        private uint backgroundSeed = (uint)(new Random().Next());
 
         public Form1()
         {
@@ -45,6 +37,32 @@ namespace DDaikontin
             }).Start();
         }
 
+        #region Inputs
+        private int enterKey = 0;
+        private int upArrowKey = 0;
+        private int downArrowKey = 0;
+        private int leftArrowKey = 0;
+        private int rightArrowKey = 0;
+        private int wKey = 0;
+        private int sKey = 0;
+        private int aKey = 0;
+        private int dKey = 0;
+        private int spaceKey = 0;
+        private void registerInputs()
+        {
+            enterKey = core.RegisterInput(Keys.Enter);
+            upArrowKey = core.RegisterInput(Keys.Up);
+            downArrowKey = core.RegisterInput(Keys.Down);
+            leftArrowKey = core.RegisterInput(Keys.Left);
+            rightArrowKey = core.RegisterInput(Keys.Right);
+            wKey = core.RegisterInput(Keys.W);
+            sKey = core.RegisterInput(Keys.S);
+            aKey = core.RegisterInput(Keys.A);
+            dKey = core.RegisterInput(Keys.D);
+            spaceKey = core.RegisterInput(Keys.Space);
+        }
+        #endregion
+
         public void MenuLoop()
         {
             if (core.GetInputState(enterKey) == InputState.JustPressed)
@@ -56,14 +74,15 @@ namespace DDaikontin
             else if (core.GetInputState(downArrowKey) == InputState.JustPressed) core.menuOption = core.menuOption == 0 ? 1 : core.menuOption - 1;
         }
 
-        public void MenuDraw()
-        {
-            pictureBox1.Invalidate();
-        }
-
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
             core.Exit();
+        }
+
+        #region Graphics
+        public void MenuDraw()
+        {
+            pictureBox1.Invalidate();
         }
 
         private void pictureBox1_Paint(object sender, PaintEventArgs e)
@@ -97,7 +116,8 @@ namespace DDaikontin
             g.TranslateTransform((float)-gs.currentPlayer.posX + pictureBox1.Width / 2, (float)-gs.currentPlayer.posY + pictureBox1.Height / 2);
             var oldTransform = g.Transform;
 
-            var starSeed = new PseudoRandom();
+            //Draw a starry background using a predictable pseudorandom number sequence
+            var starSeed = new PseudoRandom(backgroundSeed);
             for (double x = gs.currentPlayer.posX - (pictureBox1.Width / 2); x < gs.currentPlayer.posX + (pictureBox1.Width / 2); x += 256)
             {
                 int squareX = (int)Math.Floor(x / 256);
@@ -116,6 +136,7 @@ namespace DDaikontin
                 }
             }
 
+            //Draw projectiles
             foreach (var projectile in gs.projectiles)
             {
                 g.Transform = oldTransform;
@@ -123,6 +144,7 @@ namespace DDaikontin
                 g.DrawLines(projectile.uGraphics.color, projectile.uGraphics.points.ToArray());
             }
 
+            //Draw ships (and in debug mode, draw their colliders)
             foreach (var ship in gs.playerShips.Union(gs.enemyShips))
             {
                 g.Transform = oldTransform;
@@ -131,86 +153,15 @@ namespace DDaikontin
                 
                 g.DrawLines(ship.uGraphics.color, ship.uGraphics.points.ToArray());
 
+#if DEBUG
                 //    foreach (var circle in ship.collider.dCircles) {
                 //        g.DrawEllipse(Pens.Aqua, (float)(-circle.Radius + circle.X), (float)(-circle.Radius + circle.Y), (float)circle.Radius * 2, (float)circle.Radius * 2);
                 //    }
+#endif
                 g.ResetTransform();
             }
         }
-
-        private void registerInputs()
-        {
-            enterKey = core.RegisterInput(Keys.Enter);
-            upArrowKey = core.RegisterInput(Keys.Up);
-            downArrowKey = core.RegisterInput(Keys.Down);
-            leftArrowKey = core.RegisterInput(Keys.Left);
-            rightArrowKey = core.RegisterInput(Keys.Right);
-            wKey = core.RegisterInput(Keys.W);
-            sKey = core.RegisterInput(Keys.S);
-            aKey = core.RegisterInput(Keys.A);
-            dKey = core.RegisterInput(Keys.D);
-            spaceKey = core.RegisterInput(Keys.Space);
-        }
-
-        public class GameState
-        {
-            public List<ShipBase> playerShips;
-            public List<ShipBase> enemyShips;
-            public List<Projectile> projectiles;
-            public List<BackgroundItem> backitems;
-            public ShipBase currentPlayer;
-
-            public GameState()
-            {
-                playerShips = new List<ShipBase>();
-                enemyShips = new List<ShipBase>();
-                projectiles = new List<Projectile>();
-                backitems = new List<BackgroundItem>();
-            }
-
-            public void init()
-            {
-                var playerShipGfx = new UnitGraphics(Pens.White, new List<PointF>() {
-                    new PointF(16,0),
-                    new PointF(-16,14),
-                    new PointF(-6,0),
-                    new PointF(-16,-14),
-                    new PointF(16,0)
-                });
-                var enemyShipGfx = new UnitGraphics(Pens.Red, new List<PointF>() {
-                    new PointF(18,0),
-                    new PointF(-18,16),
-                    new PointF(-6,0),
-                    new PointF(-18,-16),
-                    new PointF(18,0)
-                });
-                currentPlayer = new ShipBase(playerShipGfx, 50, 50, new List<PointF>()
-                {
-                    new PointF(16,0),
-                    new PointF(-18,16),
-                    new PointF(-18, -16)
-                });
-                playerShips.Add(currentPlayer);
-                enemyShips.Add(new ShipBase(enemyShipGfx, 400, 400, new List<PointF>()
-                {
-                    new PointF(18,0)
-                }));
-            }
-
-            public void shooting(bool bulletType, ShipBase ship, int lifeTime, long currentFrame)
-            {
-                ship.lastFrameFired = currentFrame;
-                var bulletGfx = new UnitGraphics(new Pen(Color.FromArgb(255,255,255,255)), new List<PointF>()
-                {
-                    new PointF(2,0),
-                    new PointF(1, 0),
-                    new PointF(-2,0),
-                    new PointF(0, 1f)
-                });
-                ship.lastBulletIndex = (ship.lastBulletIndex + 1) % ship.bulletPoints.Count;
-                projectiles.Add(new Projectile(bulletType, ship.velocity + 4, bulletGfx, ship.facing, lifeTime, ship.posX + ship.bulletPoints[ship.lastBulletIndex].X, ship.posY + ship.bulletPoints[ship.lastBulletIndex].Y));
-            }
-        }
+        #endregion
 
         protected GameState gs;
 
