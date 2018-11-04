@@ -102,7 +102,7 @@ namespace DDaikontin
                         new PointF(0, -2),
                         new PointF(2, 0)
                     });
-                bulletCollider = new DCollider(0, 0, 3);
+                bulletCollider = new DCollider(0, 0, 4);
                 bulletVelocity = 4;
             }
             lastBulletIndex = (lastBulletIndex + 1) % bulletPoints.Count;
@@ -117,12 +117,14 @@ namespace DDaikontin
         {
             base.Process();
 
-            velocity *= 0.99;
-
             if (behavior == Behavior.ShootConstantly)
             {
                 FireWeapon(240, currentFrame);
+                facing += 0.02;
+                ApplyForce(0.11, facing);
             }
+
+            velocity *= 0.99;
         }
     }
 }

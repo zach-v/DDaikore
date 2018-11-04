@@ -11,11 +11,13 @@ namespace DDaikore
         public SoundEffect se;
         public uint position;
         public bool repeat = false;
+        public float volume = 1.0f;
 
-        public PlayingSoundEffect(SoundEffect sound, bool repeat = false)
+        public PlayingSoundEffect(SoundEffect sound, bool repeat = false, float volume = 1.0f)
         {
             se = sound;
             this.repeat = repeat;
+            this.volume = volume;
         }
 
         public bool isDone
@@ -33,7 +35,7 @@ namespace DDaikore
                 long dur = Math.Min(se.duration * 2 - position, samples.Length);
                 for (int sample = 0; sample < dur; sample++)
                 {
-                    samples[sample] += se.samples[position++];
+                    samples[sample] += se.samples[position++] * volume;
                     if (repeat && isDone)
                     {
                         position = 0;

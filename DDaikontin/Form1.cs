@@ -19,13 +19,20 @@ namespace DDaikontin
         private Core core = new Core();
 
         private uint backgroundSeed = (uint)(new Random().Next());
-        private int hitSound = 0;
-        private int startSound = 0;
-        private int explosionSound = 0;
-        private int menuLoopSound = 0;
-        private int playerShootSound = 0;
+        private int hitSound;
+        private int startSound;
+        private int explosionSound;
+        private int menuLoopSound;
+        private int playerShootSound;
+        private int enemyShootSound;
+        private int gameplayLoopSound;
         private string baseSoundPath = "../../../assets/sounds/";
         private PlayingSoundEffect menuMusic = null;
+        private PlayingSoundEffect gameMusic = null;
+
+        private int[] menuItems = { 4, 1, 1 }; //indexed by core.menuIndex
+        private int creditsScroll;
+        private string[] creditsLines = { "--Credits--", "", "Mason \"DeProgrammer\" McCoy", "Zach \"SwagDoge\" Vanscoit", "@ HackSI 2018" };
 
         public Form1()
         {
@@ -41,26 +48,30 @@ namespace DDaikontin
                 hitSound = core.RegisterSound(baseSoundPath + "sound-hit-1.wav");
                 startSound = core.RegisterSound(baseSoundPath + "sound-start-1.wav");
                 explosionSound = core.RegisterSound(baseSoundPath + "sound-death-1.wav");
-                playerShootSound = core.RegisterSound(baseSoundPath + "sound-shot-1.wav");
+                playerShootSound = core.RegisterSound(baseSoundPath + "sound-shot-2.wav");
+                enemyShootSound = core.RegisterSound(baseSoundPath + "sound-shot-1.wav");
+
+                gameplayLoopSound = core.RegisterSound(baseSoundPath + "song-2.wav");
 
                 registerInputs();
 
                 core.Begin();
+                Application.Exit();
             }).Start();
         }
 
         #region Inputs
-        private int enterKey = 0;
-        private int upArrowKey = 0;
-        private int downArrowKey = 0;
-        private int leftArrowKey = 0;
-        private int rightArrowKey = 0;
-        private int wKey = 0;
-        private int sKey = 0;
-        private int aKey = 0;
-        private int dKey = 0;
-        private int spaceKey = 0;
-        private int escapeKey = 0;
+        private int enterKey;
+        private int upArrowKey;
+        private int downArrowKey;
+        private int leftArrowKey;
+        private int rightArrowKey;
+        private int wKey;
+        private int sKey;
+        private int aKey;
+        private int dKey;
+        private int spaceKey;
+        private int escapeKey;
         private void registerInputs()
         {
             enterKey = core.RegisterInput(Keys.Enter);
@@ -82,17 +93,48 @@ namespace DDaikontin
             if (menuMusic == null) menuMusic = core.PlaySound(menuLoopSound, true);
             if (core.GetInputState(enterKey) == InputState.JustPressed)
             {
-                ResetGameState();
-                core.menuIndex = -1;
+                if (core.menuIndex == 0) //Main menu
+                {
+                    if (core.menuOption == 0)
+                    {
+                        ResetGameState();
+                        core.menuIndex = -1;
 
-                //Stop the menu music and set it to null so it can play again if the menu loop ever gets called again
-                menuMusic.stopSound();
-                menuMusic = null;
-
-                core.PlaySound(startSound);
+                        core.PlaySound(startSound);
+                        //Stop the menu music and set it to null so it can play again if the menu loop ever gets called again
+                        menuMusic.stopSound();
+                        menuMusic = null;
+                    }
+                    else if (core.menuOption == 1)
+                    {
+                        core.menuIndex = 1; //Options menu
+                        core.menuOption = 0;
+                    }
+                    else if (core.menuOption == 2)
+                    {
+                        core.menuIndex = 2; //Credits menu
+                        core.menuOption = 0;
+                        creditsScroll = pictureBox1.Height;
+                    }
+                    else if (core.menuOption == 3)
+                    {
+                        core.Exit();
+                    }
+                }
+                else if (core.menuIndex == 1) //Options menu
+                {
+                    core.menuIndex = 0;
+                    core.menuOption = 1;
+                }
+                else if (core.menuIndex == 2) //Credits menu
+                {
+                    core.menuIndex = 0;
+                    core.menuOption = 2;
+                }
             }
-            else if (core.GetInputState(upArrowKey) == InputState.JustPressed) core.menuOption = (core.menuOption + 1) % 2;
-            else if (core.GetInputState(downArrowKey) == InputState.JustPressed) core.menuOption = core.menuOption == 0 ? 1 : core.menuOption - 1;
+
+            if (core.GetInputState(downArrowKey) == InputState.JustPressed) core.menuOption = (core.menuOption + 1) % menuItems[core.menuIndex];
+            if (core.GetInputState(upArrowKey) == InputState.JustPressed) core.menuOption = core.menuOption == 0 ? menuItems[core.menuIndex] - 1 : core.menuOption - 1;
         }
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
@@ -125,11 +167,49 @@ namespace DDaikontin
             }
         }
 
+        private void DrawStringHorizontallyCentered(Graphics g, string text, Font font, Brush brush, float x, float y, float width, float height)
+        {
+            var size = g.MeasureString(text, font, (int)width);
+            g.DrawString(text, font, brush, new RectangleF(x + width / 2 - size.Width / 2, y, size.Width, height));
+        }
+
+        private void DrawStringCentered(Graphics g, string text, Font font, Brush brush, float x, float y, float width, float height)
+        {
+            var size = g.MeasureString(text, font, (int)width);
+            g.DrawString(text, font, brush, new RectangleF(x + width / 2 - size.Width / 2, 
+                y + height / 2 - size.Height / 2, 
+                size.Width + 2, size.Height + 2));
+        }
+
         private void drawMenu(Graphics g)
         {
-            g.DrawString("Daikontinum", this.Font, Brushes.White, new PointF(20, 10));
-            g.DrawString("Play", this.Font, core.menuOption == 0 ? Brushes.Blue : Brushes.White, new PointF(20, 40));
-            g.DrawString("Exit", this.Font, core.menuOption == 1 ? Brushes.Blue : Brushes.White, new PointF(20, 60));
+            if (core.menuIndex == 0)
+            {
+                DrawStringCentered(g, "DDaikontin", new Font(Font.FontFamily, Font.Size + 4f, FontStyle.Bold), Brushes.Aqua,
+                    0, 20, pictureBox1.Width, 40);
+                DrawStringCentered(g, "Play", this.Font, core.menuOption == 0 ? Brushes.White : Brushes.Gray, 0, 60, pictureBox1.Width, 30);
+                DrawStringCentered(g, "Options", this.Font, core.menuOption == 1 ? Brushes.White : Brushes.Gray, 0, 100, pictureBox1.Width, 30);
+                DrawStringCentered(g, "Credits", this.Font, core.menuOption == 2 ? Brushes.White : Brushes.Gray, 0, 140, pictureBox1.Width, 30);
+                DrawStringCentered(g, "Exit", this.Font, core.menuOption == 3 ? Brushes.White : Brushes.Gray, 0, 180, pictureBox1.Width, 30);
+            }
+            else if (core.menuIndex == 1) //Options
+            {
+                DrawStringCentered(g, "Back", this.Font, core.menuOption == 0 ? Brushes.White : Brushes.Gray, 0, 180, pictureBox1.Width, 30);
+            }
+            else if (core.menuIndex == 2) //Credits
+            {
+                creditsScroll -= 2;
+                //Loop around
+                var lineHeight = (int)g.MeasureString("A", Font, pictureBox1.Width).Height + 8;
+                if (creditsScroll < -lineHeight * creditsLines.Length) creditsScroll = pictureBox1.Height;
+                var tScroll = creditsScroll;
+                for (int x = 0; x < creditsLines.Length; x++)
+                {
+                    DrawStringCentered(g, creditsLines[x], Font, Brushes.White, 0, tScroll, pictureBox1.Width, lineHeight);
+                    tScroll += lineHeight;
+                }
+                DrawStringCentered(g, "Back", Font, core.menuOption == 0 ? Brushes.White : Brushes.Gray, 0, pictureBox1.Height - 80, pictureBox1.Width, 80);
+            }
         }
 
         private void drawGame(Graphics g)
@@ -163,6 +243,15 @@ namespace DDaikontin
                 g.Transform = oldTransform;
                 g.TranslateTransform((float)projectile.posX, (float)projectile.posY);
                 g.DrawLines(projectile.uGraphics.color, projectile.uGraphics.points.ToArray());
+
+#if DEBUG
+                foreach (var circle in projectile.collider.dCircles)
+                {
+                    var rotatedPoints = Geometry.Rotate((float)circle.X, (float)circle.Y, (float)projectile.facing);
+                    g.DrawEllipse(Pens.Aqua, (float)(-circle.Radius + rotatedPoints.X), (float)(-circle.Radius + rotatedPoints.Y),
+                        (float)circle.Radius * 2, (float)circle.Radius * 2);
+                }
+#endif
             }
 
             //Draw ships (and in debug mode, draw their colliders)
@@ -175,9 +264,12 @@ namespace DDaikontin
                 g.DrawLines(ship.uGraphics.color, ship.uGraphics.points.ToArray());
 
 #if DEBUG
-                //    foreach (var circle in ship.collider.dCircles) {
-                //        g.DrawEllipse(Pens.Aqua, (float)(-circle.Radius + circle.X), (float)(-circle.Radius + circle.Y), (float)circle.Radius * 2, (float)circle.Radius * 2);
-                //    }
+                foreach (var circle in ship.collider.dCircles)
+                {
+                    var rotatedPoints = Geometry.Rotate((float)circle.X, (float)circle.Y, (float)ship.facing);
+                    g.DrawEllipse(Pens.Aqua, (float)(-circle.Radius + rotatedPoints.X), (float)(-circle.Radius + rotatedPoints.Y), 
+                        (float)circle.Radius * 2, (float)circle.Radius * 2);
+                }
 #endif
                 g.ResetTransform();
             }
@@ -202,7 +294,8 @@ namespace DDaikontin
                 ship.OnWeaponFire = (bullets) =>
                 {
                     gs.playerProjectiles.AddRange(bullets);
-                    core.PlaySound(playerShootSound);
+                    var vol = 0.4f + (float)new Random().NextDouble() * 0.4f;
+                    core.PlaySound(playerShootSound, false, vol);
                 };
             }
             foreach (var ship in gs.enemyShips)
@@ -215,6 +308,7 @@ namespace DDaikontin
                 };
                 ship.OnWeaponFire = (bullets) => {
                     gs.enemyProjectiles.AddRange(bullets);
+                    core.PlaySound(enemyShootSound);
                 };
             }
         }
@@ -223,10 +317,12 @@ namespace DDaikontin
         {
             lock (core)
             {
+                if (gameMusic == null) gameMusic = core.PlaySound(gameplayLoopSound, true, 0.6f);
+
                 if (gs.currentPlayer.isAlive) CheckGameKeys();
                 CheckInGameMenuKeys();
 
-                rotateEnemies(); //TODO: Move to enemy ship's Process function. Need a behavior enum.
+                //rotateEnemies(); //TODO: Move to enemy ship's Process function. Need a behavior enum.
 
                 checkProjectileLifetime();
 
@@ -300,6 +396,7 @@ namespace DDaikontin
         } // End of Gameloop
 
         // Will rotate the enemies based on player position
+        //Avoid doing things based on player input like this, for network multiplayer's sake
         public void rotateEnemies()
         {
             foreach (var enemy in gs.enemyShips)
@@ -353,6 +450,8 @@ namespace DDaikontin
             if (core.GetInputState(escapeKey) == InputState.JustPressed)
             {
                 //Return to menu!
+                gameMusic.stopSound();
+                gameMusic = null;
                 core.menuIndex = 0;
                 core.menuOption = 0;
             }

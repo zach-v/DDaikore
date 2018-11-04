@@ -53,7 +53,7 @@ namespace DDaikore
         public Action GameDraw;
         public Action<int> AudioResponse; //TODO
         /// <summary>
-        /// Currently active menu (0 = main menu; -1 = not in a menu)
+        /// Currently active menu (0 = startup screen; -1 = not in a menu)
         /// </summary>
         public int menuIndex = 0;
         public int menuOption = 0;
@@ -89,11 +89,11 @@ namespace DDaikore
             return LoadedSounds.Count - 1;
         }
 
-        public PlayingSoundEffect PlaySound(int soundIndex, bool repeat = false) //TODO: Allow the user to specify a value to send to AudioResponse when the sound finishes playing
+        public PlayingSoundEffect PlaySound(int soundIndex, bool repeat = false, float volume = 1.0f) //TODO: Allow the user to specify a value to send to AudioResponse when the sound finishes playing
         {
             lock (PlayingSounds)
             {
-                PlayingSoundEffect t = new PlayingSoundEffect(LoadedSounds[soundIndex], repeat);
+                PlayingSoundEffect t = new PlayingSoundEffect(LoadedSounds[soundIndex], repeat, volume);
                 PlayingSounds.Add(t);
                 return t;
             }
