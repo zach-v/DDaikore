@@ -7,6 +7,13 @@ using System.Drawing;
 
 namespace DDaikontin
 {
+    public enum Behavior
+    {
+        Player,
+        ShootConstantly,
+
+    }
+
     public class ShipBase : Body
     {
         /// <summary>
@@ -14,11 +21,13 @@ namespace DDaikontin
         /// </summary>
         public List<PointF> bulletPoints;
         public int lastBulletIndex = 0;
-
+        public int framesBetweenBullets = 5; //TODO: Look up bulletRate by bullet type? Pass it in? What if they switch weapons?
         public long lastFrameFired = 0;
 
         public int bulletMode = 0;
         public int health = 3;
+
+        public Behavior behavior = Behavior.Player;
 
         public UnitGraphics uGraphics;
         /// <summary>
@@ -29,13 +38,17 @@ namespace DDaikontin
         /// Action to take when unit is damaged but not killed
         /// </summary>
         public Action OnDamaged;
+        /// <summary>
+        /// Action to take when the unit attempts to shoot
+        /// </summary>
+        public Action<List<Projectile>> OnWeaponFire;
         
         public bool isAlive {
             get { return health != 0; }
             set { health = value ? 1 : 0; }
         }
 
-        public ShipBase(UnitGraphics uGraphics, int health, double posX, double posY, List<PointF> bulletPoints)
+        public ShipBase(UnitGraphics uGraphics, Behavior behavior, int health, int framesBetweenBullets, double posX, double posY, List<PointF> bulletPoints)
         {
             this.uGraphics = uGraphics;
             this.collider = new DCollider(uGraphics);
@@ -43,6 +56,8 @@ namespace DDaikontin
             this.posX = posX;
             this.posY = posY;
             this.health = health;
+            this.behavior = behavior;
+            this.framesBetweenBullets = framesBetweenBullets;
         }
 
         public void Kill()
@@ -66,11 +81,11 @@ namespace DDaikontin
         /// <param name="bulletType">Type of bullet (default uses bulletMode as the type)</param>
         /// <param name="force">Force the bullet to fire even if it hasn't been long enough</param>
         /// <returns></returns>
-        public List<Projectile> FireWeapon(int lifeTime, long currentFrame, int bulletType = -1, bool force = false)
+        public void FireWeapon(int lifeTime, long currentFrame, int bulletType = -1, bool force = false)
         {
             var projectiles = new List<Projectile>();
             //If it hasn't been long enough, don't fire.
-            if (!force && currentFrame - lastFrameFired <= 5) return projectiles;
+            if (!force && currentFrame - lastFrameFired < framesBetweenBullets) return;
             if (bulletType == -1) bulletType = bulletMode;
             lastFrameFired = currentFrame;
             UnitGraphics bulletGfx = null;
@@ -79,7 +94,7 @@ namespace DDaikontin
 
             if (bulletType == 0)
             {
-                bulletGfx = new UnitGraphics(new Pen(Color.FromArgb(255, 255, 255, 255)), new List<PointF>()
+                bulletGfx = new UnitGraphics(uGraphics.color, new List<PointF>()
                     {
                         new PointF(2,0),
                         new PointF(0, 2),
@@ -94,14 +109,20 @@ namespace DDaikontin
             var bulletSpawnPoint = Geometry.Rotate(bulletPoints[lastBulletIndex], (float)facing);
             projectiles.Add(new Projectile(bulletType, lifeTime, bulletGfx, bulletCollider, velocity, facing, 
                 bulletVelocity, angle, posX + bulletSpawnPoint.X, posY + bulletSpawnPoint.Y));
-            return projectiles;
+
+            if (!ReferenceEquals(OnWeaponFire, null)) OnWeaponFire(projectiles);
         }
 
-        public new void Process()
+        public void Process(long currentFrame)
         {
             base.Process();
 
             velocity *= 0.99;
+
+            if (behavior == Behavior.ShootConstantly)
+            {
+                FireWeapon(240, currentFrame);
+            }
         }
     }
 }

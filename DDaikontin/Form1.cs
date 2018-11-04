@@ -22,7 +22,10 @@ namespace DDaikontin
         private int hitSound = 0;
         private int startSound = 0;
         private int explosionSound = 0;
+        private int menuLoopSound = 0;
+        private int playerShootSound = 0;
         private string baseSoundPath = "../../../assets/sounds/";
+        private PlayingSoundEffect menuMusic = null;
 
         public Form1()
         {
@@ -34,9 +37,11 @@ namespace DDaikontin
                 core.MenuDraw = MenuDraw;
                 core.GameLoop = GameLoop;
                 core.GameDraw = MenuDraw; //Drawing is done in the Paint method for now
+                menuLoopSound = core.RegisterSound(baseSoundPath + "song-3.wav");
                 hitSound = core.RegisterSound(baseSoundPath + "sound-hit-1.wav");
                 startSound = core.RegisterSound(baseSoundPath + "sound-start-1.wav");
                 explosionSound = core.RegisterSound(baseSoundPath + "sound-death-1.wav");
+                playerShootSound = core.RegisterSound(baseSoundPath + "sound-shot-1.wav");
 
                 registerInputs();
 
@@ -55,6 +60,7 @@ namespace DDaikontin
         private int aKey = 0;
         private int dKey = 0;
         private int spaceKey = 0;
+        private int escapeKey = 0;
         private void registerInputs()
         {
             enterKey = core.RegisterInput(Keys.Enter);
@@ -67,15 +73,22 @@ namespace DDaikontin
             aKey = core.RegisterInput(Keys.A);
             dKey = core.RegisterInput(Keys.D);
             spaceKey = core.RegisterInput(Keys.Space);
+            escapeKey = core.RegisterInput(Keys.Escape);
         }
         #endregion
 
         public void MenuLoop()
         {
+            if (menuMusic == null) menuMusic = core.PlaySound(menuLoopSound, true);
             if (core.GetInputState(enterKey) == InputState.JustPressed)
             {
                 ResetGameState();
                 core.menuIndex = -1;
+
+                //Stop the menu music and set it to null so it can play again if the menu loop ever gets called again
+                menuMusic.stopSound();
+                menuMusic = null;
+
                 core.PlaySound(startSound);
             }
             else if (core.GetInputState(upArrowKey) == InputState.JustPressed) core.menuOption = (core.menuOption + 1) % 2;
@@ -145,7 +158,7 @@ namespace DDaikontin
             }
 
             //Draw projectiles
-            foreach (var projectile in gs.playerProjectiles)
+            foreach (var projectile in gs.playerProjectiles.Union(gs.enemyProjectiles))
             {
                 g.Transform = oldTransform;
                 g.TranslateTransform((float)projectile.posX, (float)projectile.posY);
@@ -177,9 +190,21 @@ namespace DDaikontin
         {
             gs = new GameState();
             gs.init();
-            gs.currentPlayer.OnDamaged = () => {
-                core.PlaySound(hitSound);
-            };
+            foreach (var ship in gs.playerShips)
+            {
+                ship.OnDamaged = () =>
+                {
+                    core.PlaySound(hitSound);
+                };
+                ship.OnDeath = () => {
+                    core.PlaySound(explosionSound);
+                };
+                ship.OnWeaponFire = (bullets) =>
+                {
+                    gs.playerProjectiles.AddRange(bullets);
+                    core.PlaySound(playerShootSound);
+                };
+            }
             foreach (var ship in gs.enemyShips)
             {
                 ship.OnDamaged = () => {
@@ -188,6 +213,9 @@ namespace DDaikontin
                 ship.OnDeath = () => {
                     core.PlaySound(explosionSound);
                 };
+                ship.OnWeaponFire = (bullets) => {
+                    gs.enemyProjectiles.AddRange(bullets);
+                };
             }
         }
 
@@ -195,7 +223,8 @@ namespace DDaikontin
         {
             lock (core)
             {
-                if (gs.currentPlayer.isAlive) checkKeys();
+                if (gs.currentPlayer.isAlive) CheckGameKeys();
+                CheckInGameMenuKeys();
 
                 rotateEnemies(); //TODO: Move to enemy ship's Process function. Need a behavior enum.
 
@@ -203,26 +232,35 @@ namespace DDaikontin
 
                 foreach (var ship in gs.playerShips.Union(gs.enemyShips).Where(p => p.isAlive))
                 {
-                    ship.Process();
+                    ship.Process(core.frameCounter);
                 }
 
                 foreach (var projectile in gs.playerProjectiles)
                 {
-                    projectile.Process();
-                    //TODO: Check collision with enemies
+                    projectile.Process(core.frameCounter);
+                    //Check bullet collision with enemies
                     foreach (var ship in gs.enemyShips.Where(p => p.isAlive))
                     {
                         if (ship.CollidesWith(projectile))
                         {
-                            core.PlaySound(hitSound);
+                            ship.Damage(projectile.damage);
+                            projectile.Kill();
                         }
                     }
                 }
 
                 foreach (var projectile in gs.enemyProjectiles)
                 {
-                    projectile.Process();
-                    //TODO: Check collision with player
+                    projectile.Process(core.frameCounter);
+                    //Check bullet collision with players
+                    foreach (var ship in gs.playerShips.Where(p => p.isAlive))
+                    {
+                        if (ship.CollidesWith(projectile))
+                        {
+                            ship.Damage(projectile.damage);
+                            projectile.Kill();
+                        }
+                    }
                 }
 
                 //Check if players ran into each other
@@ -234,11 +272,12 @@ namespace DDaikontin
                         if (!gs.playerShips[y].isAlive) continue;
                         if (gs.playerShips[x].CollidesWith(gs.playerShips[y]))
                         {
-                            //TODO: Give damage
-                            //TODO: Make ships bounce apart (get angle between ships and send them in opposite directions)
+                            //Make ships bounce apart (get angle between ships and send them in opposite directions)
                             var targetAngle = Geometry.Face(gs.playerShips[x].posX, gs.playerShips[x].posY, gs.playerShips[y].posX, gs.playerShips[y].posY);
                             gs.playerShips[x].ApplyForce(5, targetAngle);
                             gs.playerShips[y].ApplyForce(5, -targetAngle);
+                            gs.playerShips[x].Damage(1);
+                            gs.playerShips[y].Damage(1);
                         }
                     }
                 }
@@ -250,10 +289,10 @@ namespace DDaikontin
                     {
                         if (ship.CollidesWith(foe))
                         {
-                            //TODO: Give damage
                             ship.Damage(1);
                             foe.Damage(20);
                         }
+                        //TODO: Deactivate enemies that are far away; you can move them to a separate list and check less frequently to see if they should be readded to active list
                     }
                 }
                 //TODO: Other collisions, player inputs, stuff, things, etc.
@@ -273,18 +312,19 @@ namespace DDaikontin
                 while (targetFacing > Math.PI * 2)
                     targetFacing -= Math.PI * 2;
 
-                if (targetFacing < Math.PI - 0.1)
+                if (targetFacing < Math.PI - 0.01)
                 {
                     enemy.facing -= 0.01;
                 }
-                if (targetFacing > Math.PI + 0.1)
+                if (targetFacing > Math.PI + 0.01)
                 {
                     enemy.facing += 0.01;
                 }
             }
         }
-        // Will check for these keys being used and will perform some action
-        public void checkKeys()
+
+        // Will check for these keys being used and will perform some action pertaining to gameplay
+        public void CheckGameKeys()
         {
             if ((core.GetInputState(leftArrowKey) == InputState.Held) || (core.GetInputState(aKey) == InputState.Held))
             {
@@ -304,7 +344,17 @@ namespace DDaikontin
             }
             if (core.GetInputState(spaceKey) == InputState.Held)
             {
-                gs.Shoot(gs.currentPlayer, 700, core.frameCounter);
+                gs.currentPlayer.FireWeapon(700, core.frameCounter);
+            }
+        }
+
+        public void CheckInGameMenuKeys()
+        {
+            if (core.GetInputState(escapeKey) == InputState.JustPressed)
+            {
+                //Return to menu!
+                core.menuIndex = 0;
+                core.menuOption = 0;
             }
         }
 

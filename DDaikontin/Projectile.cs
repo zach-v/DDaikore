@@ -7,6 +7,7 @@ namespace DDaikontin
     {
         public int bulletType = 0;
         public int lifetime = 0;
+        public int damage = 1;
 
         public UnitGraphics uGraphics;
 
@@ -24,9 +25,18 @@ namespace DDaikontin
             this.lifetime = lifetime;
             this.posX = spawnX;
             this.posY = spawnY;
+
+            if (bulletType == 0) damage = 1;
+            else if (bulletType == 1) damage = 3;
         }
 
-        public new void Process()
+        public void Kill()
+        {
+            //Expire the bullet (but it'll stay in memory until we're ready to get rid of it)
+            lifetime = 0;
+        }
+
+        public void Process(long currentFrame)
         {
             base.Process();
 

@@ -39,24 +39,17 @@ namespace DDaikontin
                     new PointF(-18,-16),
                     new PointF(18,0)
                 });
-            currentPlayer = new ShipBase(playerShipGfx, 3, 50, 50, new List<PointF>()
+            currentPlayer = new ShipBase(playerShipGfx, Behavior.Player, 3, 6, 50, 50, new List<PointF>()
                 {
                     new PointF(16,0),
                     new PointF(-18,16),
                     new PointF(-18, -16)
                 });
             playerShips.Add(currentPlayer);
-            enemyShips.Add(new ShipBase(enemyShipGfx, 5, 400, 400, new List<PointF>()
+            enemyShips.Add(new ShipBase(enemyShipGfx, Behavior.ShootConstantly, 5, 40, 400, 400, new List<PointF>()
                 {
                     new PointF(18,0)
                 }));
-        }
-
-        public void Shoot(ShipBase ship, int lifeTime, long currentFrame, int bulletType = -1)
-        {
-            var newProjectiles = ship.FireWeapon(lifeTime, currentFrame, bulletType);
-            if (playerShips.Contains(ship)) playerProjectiles.AddRange(newProjectiles);
-            else enemyProjectiles.AddRange(newProjectiles);
         }
     }
 }
