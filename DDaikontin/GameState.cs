@@ -34,7 +34,7 @@ namespace DDaikontin
 
         public void init()
         {
-            currentPlayer = new ShipBase(playerShipGfx, Behavior.Player, 3, 6, 50, 50, LineArt.PlayerShootPoints);
+            currentPlayer = new ShipBase(playerShipGfx, Behavior.Player, 3, 6, 0, 0, LineArt.PlayerShootPoints);
             playerShips.Add(currentPlayer);
 
             /*
@@ -46,16 +46,18 @@ namespace DDaikontin
             /**/
         }
 
-        public void generateEnemy(PseudoRandom tRand, int regionID, double x, double y)
+        public void generateEnemy(PseudoRandom tRand, int regionID, double x, double y, Action<List<Projectile>> OnFire, Action OnDamage, Action OnDeath)
         {
             double val = tRand.RandomDouble();
-            if (val > 0.35)
-                enemyShips.Add(new ShipBase(enemyShipGfx, Behavior.ShootConstantly, regionID / 3 + 2, 40, x, y, LineArt.PlayerShootPoints1));
-            else if (val > 0.02)
-                enemyShips.Add(new ShipBase(enemy2ShipGfx, Behavior.SpinShoot, regionID / 3 + 4, 5, x, y, LineArt.EnemyShip2_ShootPoints.Select(p => new PointF(p.X * 2f, p.Y * 2f)).ToList()));
-            else if (val <= 0.02)
+            if (val > 0.2)
+                return;
+            else if (val > 0.05)
+                enemyShips.Add(new ShipBase(enemyShipGfx, Behavior.ShootConstantly, regionID / 3 + 2, 40, x, y, LineArt.PlayerShootPoints1) { OnWeaponFire = OnFire });
+            else if (val > 0.005)
+                enemyShips.Add(new ShipBase(enemy2ShipGfx, Behavior.SpinShoot, regionID / 3 + 4, 5, x, y, LineArt.EnemyShip2_ShootPoints.Select(p => new PointF(p.X * 2f, p.Y * 2f)).ToList()) { OnWeaponFire = OnFire });
+            else 
                 enemyShips.Add(new ShipBase(new UnitGraphics(Pens.Fuchsia, LineArt.BossShip), Behavior.Boss, regionID / 3 + 150, 6, x, y, LineArt.BossBulletPoints)
-                { facing = Math.PI / 2, collider = new DCollider(LineArt.BossColliders) });
+                { facing = Math.PI / 2, collider = new DCollider(LineArt.BossColliders), OnWeaponFire = OnFire });
         }
     }
 }

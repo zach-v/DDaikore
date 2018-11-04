@@ -77,6 +77,7 @@ namespace DDaikontin
         private int dKey;
         private int spaceKey;
         private int escapeKey;
+        private int shiftKey;
         private void registerInputs()
         {
             enterKey = core.RegisterInput(Keys.Enter);
@@ -90,6 +91,7 @@ namespace DDaikontin
             dKey = core.RegisterInput(Keys.D);
             spaceKey = core.RegisterInput(Keys.Space);
             escapeKey = core.RegisterInput(Keys.Escape);
+            shiftKey = core.RegisterInput(Keys.LShiftKey);
         }
         #endregion
 
@@ -286,6 +288,12 @@ namespace DDaikontin
 #endif
                 g.ResetTransform();
             }
+
+            if (core.GetInputState(shiftKey) == InputState.Held)
+            {
+                g.DrawLine(new Pen(Color.FromArgb(255,0,39,45)), (float) (pictureBox1.Width / 2 - gs.currentPlayer.posX), (float) (pictureBox1.Height / 2 - gs.currentPlayer.posY),
+                    pictureBox1.Width / 2, pictureBox1.Height / 2);
+            }
         }
         #endregion
 
@@ -345,7 +353,7 @@ namespace DDaikontin
                     gs.regionSpawnRecord.Add(new List<Tuple<double, double>>());
                 }
 
-                for (int i = Math.Max(0, regionID - 1); i <= regionID + 1; i++)
+                for (int i = Math.Max(1, regionID - 1); i <= regionID + 1; i++)
                 {
                     GenerateFoesForRegion(i);
                 }
@@ -419,6 +427,22 @@ namespace DDaikontin
             }
         } // End of Gameloop
 
+        public void onEnemyDamagedBasic()
+        {
+            core.PlaySound(hitSound);
+        }
+
+        public void onEnemyDeathBasic()
+        {
+            core.PlaySound(explosionSound);
+        }
+
+        public void onEnemyFireBasic(List<Projectile> bullets)
+        {
+            gs.enemyProjectiles.AddRange(bullets);
+            core.PlaySound(enemyShootSound);
+        }
+
         protected void GenerateFoesForRegion(int regionID)
         {
             var myAngleFromCenter = Math.Atan2(gs.currentPlayer.posY, gs.currentPlayer.posX);
@@ -455,7 +479,7 @@ namespace DDaikontin
                 var subPos = tRand.RandomDouble() * ringThickness;
                 var x = Math.Cos(angle) * (ringInner + subPos);
                 var y = Math.Sin(angle) * (ringInner + subPos);
-                gs.generateEnemy(tRand, regionID, x, y);
+                gs.generateEnemy(tRand, regionID, x, y, onEnemyFireBasic, onEnemyDamagedBasic, onEnemyDeathBasic);
             }
         }
 
