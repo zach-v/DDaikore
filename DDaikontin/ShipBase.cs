@@ -11,9 +11,8 @@ namespace DDaikontin
     {
         Player,
         ShootConstantly,
-
         Boss,
-
+        SpinShoot,
     }
 
     public class ShipBase : Body
@@ -27,7 +26,7 @@ namespace DDaikontin
         public long lastFrameFired = 0;
         public long lastDamagedFrame = -100;
 
-        public int bulletMode = 0;
+        public BulletType bulletMode = BulletType.StraightFacing;
         public int health = 3;
 
         public Behavior behavior = Behavior.Player;
@@ -86,34 +85,46 @@ namespace DDaikontin
         /// <param name="bulletType">Type of bullet (default uses bulletMode as the type)</param>
         /// <param name="force">Force the bullet to fire even if it hasn't been long enough</param>
         /// <returns></returns>
-        public void FireWeapon(int lifeTime, long currentFrame, int bulletType = -1, bool force = false)
+        public void FireWeapon(int lifeTime, long currentFrame, BulletType bulletType = BulletType.Auto, bool force = false, double angle = 0)
         {
             var projectiles = new List<Projectile>();
             //If it hasn't been long enough, don't fire.
             if (!force && currentFrame - lastFrameFired < framesBetweenBullets) return;
-            if (bulletType == -1) bulletType = bulletMode;
+            if (bulletType == BulletType.Auto)
+                bulletType = bulletMode;
             lastFrameFired = currentFrame;
             UnitGraphics bulletGfx = null;
             DCollider bulletCollider = null;
             double bulletVelocity = 0;
+            int bulletCount = 1;
 
-            if (bulletType == 0)
+            if (bulletType == BulletType.StraightFacing)
             {
-                bulletGfx = new UnitGraphics(uGraphics.color, new List<PointF>()
-                    {
-                        new PointF(2,0),
-                        new PointF(0, 2),
-                        new PointF(-2,0),
-                        new PointF(0, -2),
-                        new PointF(2, 0)
-                    });
+                bulletGfx = new UnitGraphics(uGraphics.color, LineArt.TinyTim);
                 bulletCollider = new DCollider(0, 0, 4);
                 bulletVelocity = 4;
+                angle = facing;
+            } else if (bulletType == BulletType.FourWay)
+            {
+                bulletGfx = new UnitGraphics(uGraphics.color, LineArt.TinyTim);
+                bulletCollider = new DCollider(0, 0, 4);
+                bulletVelocity = 3;
+                bulletCount = 4;
+            } else
+            {
+                System.Diagnostics.Debugger.Break();
             }
-            lastBulletIndex = (lastBulletIndex + 1) % bulletPoints.Count;
-            var bulletSpawnPoint = Geometry.Rotate(bulletPoints[lastBulletIndex], (float)facing);
-            projectiles.Add(new Projectile(bulletType, lifeTime, bulletGfx, bulletCollider, velocity, facing, 
-                bulletVelocity, angle, posX + bulletSpawnPoint.X, posY + bulletSpawnPoint.Y));
+            for (int i = 0; i < bulletCount; i++)
+            {
+                lastBulletIndex = (lastBulletIndex + 1) % bulletPoints.Count;
+                var bulletSpawnPoint = Geometry.Rotate(bulletPoints[lastBulletIndex], (float)angle);
+                projectiles.Add(new Projectile(bulletType, lifeTime, bulletGfx, bulletCollider, velocity, angle,
+                    bulletVelocity, angle, posX + bulletSpawnPoint.X, posY + bulletSpawnPoint.Y));
+                if (bulletType == BulletType.FourWay)
+                {
+                    angle += (Math.PI / 2);
+                }
+            }
 
             if (!ReferenceEquals(OnWeaponFire, null)) OnWeaponFire(projectiles);
         }
@@ -124,9 +135,14 @@ namespace DDaikontin
 
             if (behavior == Behavior.ShootConstantly)
             {
-                FireWeapon(240, currentFrame);
+                FireWeapon(240, currentFrame, BulletType.StraightFacing);
                 facing += 0.02;
                 ApplyForce(0.11, facing);
+            }
+            if (behavior == Behavior.SpinShoot)
+            {
+                FireWeapon(240, currentFrame, BulletType.FourWay, false, facing);
+                facing -= 0.09;
             }
 
             velocity *= 0.99;
