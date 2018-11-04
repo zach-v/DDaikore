@@ -91,17 +91,23 @@ namespace DDaikore
 
         public void PlaySound(int soundIndex) //TODO: Allow the user to specify a value to send to AudioResponse when the sound finishes playing
         {
-            PlayingSounds.Add(new PlayingSoundEffect(LoadedSounds[soundIndex]));
+            lock (PlayingSounds) //Merge: take other for this method
+            {
+                PlayingSounds.Add(new PlayingSoundEffect(LoadedSounds[soundIndex]));
+            }
         }
 
         private void ClearPlayedSounds()
         {
-            for (int x = PlayingSounds.Count - 1; x >= 0; x--)
+            lock (PlayingSounds)
             {
-                if (PlayingSounds[x].isDone)
+                for (int x = PlayingSounds.Count - 1; x >= 0; x--)
                 {
-                    //TODO: This is where you'd call AudioResponse
-                    PlayingSounds.RemoveAt(x);
+                    if (PlayingSounds[x].isDone)
+                    {
+                        //TODO: This is where you'd call AudioResponse
+                        PlayingSounds.RemoveAt(x);
+                    }
                 }
             }
         }
@@ -112,14 +118,17 @@ namespace DDaikore
         /// </summary>
         public uint OnNext(float[] samples, uint offset, uint frames)
         {
-            //Mix all the playing sound effects together into the samples array
-            Array.Clear(samples, 0, samples.Length);
-
-            foreach (var sound in PlayingSounds)
+            lock (PlayingSounds)
             {
-                if (!sound.isDone) sound.mix(samples);
+                //Mix all the playing sound effects together into the samples array
+                Array.Clear(samples, 0, samples.Length);
+
+                foreach (var sound in PlayingSounds)
+                {
+                    if (!sound.isDone) sound.mix(samples);
+                }
+                return frames;
             }
-            return frames;
         }
         #endregion
 

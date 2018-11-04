@@ -19,6 +19,10 @@ namespace DDaikontin
         private Core core = new Core();
 
         private uint backgroundSeed = (uint)(new Random().Next());
+        private int hitSound = 0;
+        private int startSound = 0;
+        private int explosionSound = 0;
+        private string baseSoundPath = "../../../assets/sounds/";
 
         public Form1()
         {
@@ -30,6 +34,9 @@ namespace DDaikontin
                 core.MenuDraw = MenuDraw;
                 core.GameLoop = GameLoop;
                 core.GameDraw = MenuDraw; //Drawing is done in the Paint method for now
+                hitSound = core.RegisterSound(baseSoundPath + "sound-hit-1.wav");
+                startSound = core.RegisterSound(baseSoundPath + "sound-start-1.wav");
+                explosionSound = core.RegisterSound(baseSoundPath + "sound-death-1.wav");
 
                 registerInputs();
 
@@ -69,6 +76,7 @@ namespace DDaikontin
             {
                 ResetGameState();
                 core.menuIndex = -1;
+                core.PlaySound(startSound);
             }
             else if (core.GetInputState(upArrowKey) == InputState.JustPressed) core.menuOption = (core.menuOption + 1) % 2;
             else if (core.GetInputState(downArrowKey) == InputState.JustPressed) core.menuOption = core.menuOption == 0 ? 1 : core.menuOption - 1;
@@ -118,10 +126,10 @@ namespace DDaikontin
 
             //Draw a starry background using a predictable pseudorandom number sequence
             var starSeed = new PseudoRandom(backgroundSeed);
-            for (double x = gs.currentPlayer.posX - (pictureBox1.Width / 2); x < gs.currentPlayer.posX + (pictureBox1.Width / 2); x += 256)
+            for (double x = gs.currentPlayer.posX - (pictureBox1.Width / 2); x < gs.currentPlayer.posX + (pictureBox1.Width / 2) + 256; x += 256)
             {
                 int squareX = (int)Math.Floor(x / 256);
-                for (double y = gs.currentPlayer.posY - (pictureBox1.Height / 2); y < gs.currentPlayer.posY + (pictureBox1.Height / 2); y += 256)
+                for (double y = gs.currentPlayer.posY - (pictureBox1.Height / 2); y < gs.currentPlayer.posY + (pictureBox1.Height / 2) + 256; y += 256)
                 {
                     int squareY = (int)Math.Floor(y / 256);
                     starSeed.lastValue = (uint)(((long)squareX * 13 + squareY * 58) & uint.MaxValue);
@@ -137,7 +145,7 @@ namespace DDaikontin
             }
 
             //Draw projectiles
-            foreach (var projectile in gs.projectiles)
+            foreach (var projectile in gs.playerProjectiles)
             {
                 g.Transform = oldTransform;
                 g.TranslateTransform((float)projectile.posX, (float)projectile.posY);
@@ -145,7 +153,7 @@ namespace DDaikontin
             }
 
             //Draw ships (and in debug mode, draw their colliders)
-            foreach (var ship in gs.playerShips.Union(gs.enemyShips))
+            foreach (var ship in gs.playerShips.Union(gs.enemyShips).Where(p => p.isAlive))
             {
                 g.Transform = oldTransform;
                 g.TranslateTransform((float)ship.posX, (float)ship.posY);
@@ -169,47 +177,85 @@ namespace DDaikontin
         {
             gs = new GameState();
             gs.init();
+            gs.currentPlayer.OnDamaged = () => {
+                core.PlaySound(hitSound);
+            };
+            foreach (var ship in gs.enemyShips)
+            {
+                ship.OnDamaged = () => {
+                    core.PlaySound(hitSound);
+                };
+                ship.OnDeath = () => {
+                    core.PlaySound(explosionSound);
+                };
+            }
         }
 
         public void GameLoop()
         {
             lock (core)
             {
-                checkKeys();
+                if (gs.currentPlayer.isAlive) checkKeys();
 
-                rotateEnemies();
+                rotateEnemies(); //TODO: Move to enemy ship's Process function. Need a behavior enum.
 
                 checkProjectileLifetime();
 
-                foreach (var ship in gs.playerShips.Union(gs.enemyShips))
+                foreach (var ship in gs.playerShips.Union(gs.enemyShips).Where(p => p.isAlive))
                 {
-                    ship.posX += ship.velocity * Math.Cos(ship.angle);
-                    ship.posY += ship.velocity * Math.Sin(ship.angle);
-
-                    ship.velocity *= 0.99;
+                    ship.Process();
                 }
 
-                foreach (var projectile in gs.projectiles)
+                foreach (var projectile in gs.playerProjectiles)
                 {
-                    projectile.posX += projectile.velocity * Math.Cos(projectile.angle);
-                    projectile.posY += projectile.velocity * Math.Sin(projectile.angle);
-                }
-
-                //Physics!
-                for (var x = 0; x < gs.playerShips.Count; x++)
-                {
-                    for (var y = x + 1; y < gs.playerShips.Count; y++)
+                    projectile.Process();
+                    //TODO: Check collision with enemies
+                    foreach (var ship in gs.enemyShips.Where(p => p.isAlive))
                     {
-                        if (gs.playerShips[x].CollidesWith(gs.playerShips[y]))
+                        if (ship.CollidesWith(projectile))
                         {
-                            //TODO: Give damage
-                            //TODO: Make ships bounce apart (get angle between ships and send them in opposite directions)
-                            gs.playerShips[x].velocity = -5;
-                            gs.playerShips[y].velocity = 5;
+                            core.PlaySound(hitSound);
                         }
                     }
                 }
 
+                foreach (var projectile in gs.enemyProjectiles)
+                {
+                    projectile.Process();
+                    //TODO: Check collision with player
+                }
+
+                //Check if players ran into each other
+                for (var x = 0; x < gs.playerShips.Count; x++)
+                {
+                    if (!gs.playerShips[x].isAlive) continue;
+                    for (var y = x + 1; y < gs.playerShips.Count; y++)
+                    {
+                        if (!gs.playerShips[y].isAlive) continue;
+                        if (gs.playerShips[x].CollidesWith(gs.playerShips[y]))
+                        {
+                            //TODO: Give damage
+                            //TODO: Make ships bounce apart (get angle between ships and send them in opposite directions)
+                            var targetAngle = Geometry.Face(gs.playerShips[x].posX, gs.playerShips[x].posY, gs.playerShips[y].posX, gs.playerShips[y].posY);
+                            gs.playerShips[x].ApplyForce(5, targetAngle);
+                            gs.playerShips[y].ApplyForce(5, -targetAngle);
+                        }
+                    }
+                }
+
+                //Check if players ran into enemies
+                foreach (var ship in gs.playerShips.Where(p => p.isAlive))
+                {
+                    foreach (var foe in gs.enemyShips.Where(p => p.isAlive))
+                    {
+                        if (ship.CollidesWith(foe))
+                        {
+                            //TODO: Give damage
+                            ship.Damage(1);
+                            foe.Damage(20);
+                        }
+                    }
+                }
                 //TODO: Other collisions, player inputs, stuff, things, etc.
             }
         } // End of Gameloop
@@ -219,7 +265,7 @@ namespace DDaikontin
         {
             foreach (var enemy in gs.enemyShips)
             {
-                var targetFacing = Math.Atan2(enemy.posY - gs.currentPlayer.posY, enemy.posX - gs.currentPlayer.posX);
+                var targetFacing = Geometry.Face(enemy.posX, enemy.posY, gs.currentPlayer.posX, gs.currentPlayer.posY);
 
                 targetFacing = targetFacing - enemy.facing;
                 while (targetFacing < 0)
@@ -250,7 +296,7 @@ namespace DDaikontin
             }
             if ((core.GetInputState(upArrowKey) == InputState.Held) || (core.GetInputState(wKey) == InputState.Held))
             {
-                gs.currentPlayer.applyForce(0.045, gs.currentPlayer.facing);
+                gs.currentPlayer.ApplyForce(0.045, gs.currentPlayer.facing);
             }
             if ((core.GetInputState(downArrowKey) == InputState.Held) || (core.GetInputState(sKey) == InputState.Held))
             {
@@ -258,21 +304,20 @@ namespace DDaikontin
             }
             if (core.GetInputState(spaceKey) == InputState.Held)
             {
-                if (gs.currentPlayer.bulletMode == 0)
-                    if (core.frameCounter - gs.currentPlayer.lastFrameFired > 5)
-                        gs.shooting(true, gs.currentPlayer, 1000, core.frameCounter);
+                gs.Shoot(gs.currentPlayer, 700, core.frameCounter);
             }
         }
 
         // Removes the projectile if the lifetime expires
         public void checkProjectileLifetime()
         {
-            for (int i = gs.projectiles.Count - 1; i >=0; i--)
+            //Each list has to be processed separately--the players' list and the enemies' list
+            foreach (var list in new List<List<Projectile>> { gs.playerProjectiles, gs.enemyProjectiles })
             {
-                gs.projectiles[i].lifetime -= 1;
-                if (gs.projectiles[i].lifetime <= 0)
+                for (int i = list.Count - 1; i >= 0; i--)
                 {
-                    gs.projectiles.Remove(gs.projectiles[i]);
+                    list[i].lifetime -= 1;
+                    if (list[i].lifetime <= 0) list.RemoveAt(i);
                 }
             }
         }

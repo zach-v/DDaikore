@@ -1,40 +1,39 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace DDaikontin {
-    public class Projectile {
-
-        public bool bulletType = true;
-
-        public double velocity = 0;
-        public double angle = 0; //Radians
-        public double posX;
-        public double posY;
+namespace DDaikontin
+{
+    public class Projectile : Body
+    {
+        public int bulletType = 0;
         public int lifetime = 0;
 
         public UnitGraphics uGraphics;
-        public DCollider collider;
 
-        public Projectile (bool bulletType, double initVel, UnitGraphics uGraphics, double angle, int lifetime, double posX, double posY) {
+        public Projectile(int bulletType, int lifetime, UnitGraphics uGraphics, DCollider collider, 
+            double shooterVelocity, double shooterFacing, double bulletVelocity, double shooterAngle,
+            double spawnX, double spawnY)
+        {
             this.bulletType = bulletType;
-            velocity = initVel;
+            this.angle = shooterAngle;
+            this.velocity = shooterVelocity;
+            this.facing = shooterFacing;
+            Geometry.ApplyForce(ref this.velocity, ref this.angle, bulletVelocity, shooterFacing);
             this.uGraphics = uGraphics;
+            this.collider = collider;
             this.lifetime = lifetime;
-            this.angle = angle;
-            this.posX = posX;
-            this.posY = posY;
+            this.posX = spawnX;
+            this.posY = spawnY;
         }
 
-        public void applyForce(double force, double direction) {
-            //Break velocity + angle down into X and Y components, then add the .rotation-based force, then convert back with atan2 and the distance formula
-            double xSpeed = velocity * Math.Cos(angle);
-            double ySpeed = velocity * Math.Sin(angle);
+        public new void Process()
+        {
+            base.Process();
 
-            xSpeed += force * Math.Cos(direction);
-            ySpeed += force * Math.Sin(direction);
-
-            velocity = Math.Sqrt(xSpeed * xSpeed + ySpeed * ySpeed);
-            angle = Math.Atan2(ySpeed, xSpeed);
+            if (bulletType == 1) //Spinny shuriken bullet
+            {
+                facing += 0.07;
+            }
         }
     }
 }

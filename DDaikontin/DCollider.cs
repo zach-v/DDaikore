@@ -36,6 +36,8 @@ namespace DDaikontin
 
         public bool CollidesWith(double x, double y, DCollider other, double otherX, double otherY)
         {
+            //TODO: Account for rotation of the object that owns the collider
+
             foreach (var c in dCircles)
             {
                 var cX = x + c.X - otherX;
