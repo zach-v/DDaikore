@@ -36,23 +36,26 @@ namespace DDaikontin
         {
             currentPlayer = new ShipBase(playerShipGfx, Behavior.Player, 3, 6, 50, 50, LineArt.PlayerShootPoints);
             playerShips.Add(currentPlayer);
-            
+
             /*
             enemyShips.Add(new ShipBase(enemyShipGfx, Behavior.ShootConstantly, 5, 40, 400, 400, LineArt.PlayerShootPoints1));
+            enemyShips.Add(new ShipBase(enemy2ShipGfx, Behavior.SpinShoot, 5, 5, -400, -400, LineArt.EnemyShip2_ShootPoints.Select(p => new PointF(p.X * 2f, p.Y * 2f)).ToList()));
             enemyShips.Add(new ShipBase(new UnitGraphics(Pens.Fuchsia, LineArt.BossShip),
                 Behavior.Boss, 250, 6, 50, -600, LineArt.BossBulletPoints)
             { facing = Math.PI / 2, collider = new DCollider(LineArt.BossColliders) });
-            enemyShips.Add(new ShipBase(enemy2ShipGfx, Behavior.SpinShoot, 5, 5, -400, -400, LineArt.EnemyShip2_ShootPoints.Select(p => new PointF(p.X * 2f, p.Y * 2f)).ToList()));
             /**/
         }
 
         public void generateEnemy(PseudoRandom tRand, int regionID, double x, double y)
         {
             double val = tRand.RandomDouble();
-            if (val > 0.3)
-                enemyShips.Add(new ShipBase(enemyShipGfx, Behavior.ShootConstantly, 5, 40, 400, 400, LineArt.PlayerShootPoints1));
-            else if (val <= 0.3)
-                enemyShips.Add(new ShipBase(enemy2ShipGfx, Behavior.SpinShoot, 5, 5, -400, -400, LineArt.EnemyShip2_ShootPoints.Select(p => new PointF(p.X * 2f, p.Y * 2f)).ToList()));
+            if (val > 0.35)
+                enemyShips.Add(new ShipBase(enemyShipGfx, Behavior.ShootConstantly, regionID / 3 + 2, 40, x, y, LineArt.PlayerShootPoints1));
+            else if (val > 0.02)
+                enemyShips.Add(new ShipBase(enemy2ShipGfx, Behavior.SpinShoot, regionID / 3 + 4, 5, x, y, LineArt.EnemyShip2_ShootPoints.Select(p => new PointF(p.X * 2f, p.Y * 2f)).ToList()));
+            else if (val <= 0.02)
+                enemyShips.Add(new ShipBase(new UnitGraphics(Pens.Fuchsia, LineArt.BossShip), Behavior.Boss, regionID / 3 + 150, 6, x, y, LineArt.BossBulletPoints)
+                { facing = Math.PI / 2, collider = new DCollider(LineArt.BossColliders) });
         }
     }
 }
