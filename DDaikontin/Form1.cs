@@ -28,20 +28,34 @@ namespace DDaikontin
         private int playerShootSound;
         private int enemyShootSound;
         private int gameplayLoopSound;
-        private string baseSoundPath = "../../../assets/sounds/";
+        private string baseAssetsPath = "assets/";
+        private string baseSoundPath = "sounds/";
+        private string baseFontPath = "graphics/vibrocentric-font/";
         private PlayingSoundEffect menuMusic = null;
         private PlayingSoundEffect gameMusic = null;
+        private System.Drawing.Text.PrivateFontCollection fontCollection = new System.Drawing.Text.PrivateFontCollection();
 
         private int[] menuItems = { 4, 1, 1 }; //indexed by core.menuIndex
         private float creditsScroll;
         private string[] creditsLines = { "--Credits--", "",
             "Aureuscode", "Mason \"DeProgrammer\" McCoy", "",
             "Snacktivision", "Zach \"SwagDoge\" Vanscoit", "",
+            "Base audio engine by Guy Perfect", "",
+            "Font by Typodermic Fonts Inc.", "",
             "@ HackSI 2018" };
 
         public Form1()
         {
             InitializeComponent();
+            //Locate assets by looking up one level until it finds them or goes too far
+            while (!System.IO.Directory.Exists(baseAssetsPath) && baseAssetsPath.Length < 30) baseAssetsPath = "../" + baseAssetsPath;
+            baseSoundPath = baseAssetsPath + baseSoundPath;
+            baseFontPath = baseAssetsPath + baseFontPath;
+
+            //Load font
+            fontCollection.AddFontFile(baseFontPath + "vibrocentric rg.ttf");
+            this.Font = new Font(new FontFamily("vibrocentric", fontCollection), 20, FontStyle.Regular);
+
             new Thread(() =>
             {
                 core.GameVersion = GameVersion;
