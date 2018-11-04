@@ -91,7 +91,7 @@ namespace DDaikore
 
         public PlayingSoundEffect PlaySound(int soundIndex, bool repeat = false) //TODO: Allow the user to specify a value to send to AudioResponse when the sound finishes playing
         {
-            lock (this)
+            lock (PlayingSounds)
             {
                 PlayingSoundEffect t = new PlayingSoundEffect(LoadedSounds[soundIndex], repeat);
                 PlayingSounds.Add(t);
