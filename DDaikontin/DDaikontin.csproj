@@ -51,6 +51,7 @@
     <Compile Include="DCollider.cs" />
     <Compile Include="Geometry.cs" />
     <Compile Include="GameState.cs" />
+    <Compile Include="LineArt.cs" />
     <Compile Include="Projectile.cs" />
     <Compile Include="ShipBase.cs" />
     <Compile Include="Form1.cs">
