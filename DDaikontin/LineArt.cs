@@ -9,6 +9,14 @@ namespace DDaikontin
 {
     public static class LineArt
     {
+        public static readonly List<PointF> TinyTim = new List<PointF>()
+        {
+            new PointF(2,0),
+            new PointF(0, 2),
+            new PointF(-2,0),
+            new PointF(0, -2),
+            new PointF(2, 0)
+        };
         public static readonly List<PointF> PlayerShip = new List<PointF>()
         {
             new PointF(16,0),
@@ -57,13 +65,47 @@ namespace DDaikontin
             new PointF(4,16)
         };
 
-        public static List<PointF> Enemy1ShootPoints = new List<PointF>()
+        public static List<PointF> EnemyShip1_ShootPoints = new List<PointF>()
         {
              new PointF(4,16),
              new PointF(0,12),
              new PointF(0,-12)
         };
 
+        public static readonly List<PointF> EnemyShip2 = new List<PointF>()
+        {
+            new PointF(0,8),
+            new PointF(4,11),
+            new PointF(2,8),
+            new PointF(4,4),
+            new PointF(8,2),
+            new PointF(11,4),
+            new PointF(8,0),
+            new PointF(11,-4),
+            new PointF(8,-2),
+            new PointF(4,-4),
+            new PointF(2,-8),
+            new PointF(4,-11),
+            new PointF(0,-8),
+            new PointF(-4,-11),
+            new PointF(-2,-8),
+            new PointF(-4,-4),
+            new PointF(-8,-2),
+            new PointF(-11,-4),
+            new PointF(-8,0),
+            new PointF(-11,4),
+            new PointF(-8,2),
+            new PointF(-4,4),
+            new PointF(-2,8),
+            new PointF(-4,11),
+            new PointF(0,8),
+        };
+
+        public static List<PointF> EnemyShip2_ShootPoints = new List<PointF>()
+        {
+            new PointF(8,0),
+        };
+        
         /// <summary>
         /// Bullet design (naruto star thing)
         /// </summary>

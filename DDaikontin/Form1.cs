@@ -49,7 +49,7 @@ namespace DDaikontin
                 startSound = core.RegisterSound(baseSoundPath + "sound-start-1.wav");
                 explosionSound = core.RegisterSound(baseSoundPath + "sound-death-1.wav");
                 playerShootSound = core.RegisterSound(baseSoundPath + "sound-shot-2.wav");
-                enemyShootSound = core.RegisterSound(baseSoundPath + "sound-shot-1.wav");
+                enemyShootSound = core.RegisterSound(baseSoundPath + "sound-shot-3.wav");
 
                 gameplayLoopSound = core.RegisterSound(baseSoundPath + "song-2.wav");
 

@@ -27,9 +27,12 @@ namespace DDaikontin
         {
             var playerShipGfx = new UnitGraphics(Pens.White, LineArt.PlayerShip);
             var enemyShipGfx = new UnitGraphics(Pens.Red, LineArt.PlayerShip);
+            var enemy2ShipGfx = new UnitGraphics(Pens.Red, LineArt.EnemyShip2.Select(p => new PointF(p.X * 2f,p.Y * 2f)).ToList());
+
             currentPlayer = new ShipBase(playerShipGfx, Behavior.Player, 3, 6, 50, 50, LineArt.PlayerShootPoints);
             playerShips.Add(currentPlayer);
             enemyShips.Add(new ShipBase(enemyShipGfx, Behavior.ShootConstantly, 5, 40, 400, 400, LineArt.PlayerShootPoints1));
+            enemyShips.Add(new ShipBase(enemy2ShipGfx, Behavior.SpinShoot, 5, 5, -400, -400, LineArt.EnemyShip2_ShootPoints.Select(p => new PointF(p.X * 2f, p.Y * 2f)).ToList()));
         }
     }
 }

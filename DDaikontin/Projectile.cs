@@ -3,15 +3,25 @@ using System.Collections.Generic;
 
 namespace DDaikontin
 {
+    public enum BulletType
+    {
+        Auto,
+        StraightFacing,
+        Straight,
+        Spin,
+        FourWay,
+    }
+
     public class Projectile : Body
     {
-        public int bulletType = 0;
         public int lifetime = 0;
         public int damage = 1;
 
+        public BulletType bulletType = BulletType.Straight;
+
         public UnitGraphics uGraphics;
 
-        public Projectile(int bulletType, int lifetime, UnitGraphics uGraphics, DCollider collider, 
+        public Projectile(BulletType bulletType, int lifetime, UnitGraphics uGraphics, DCollider collider, 
             double shooterVelocity, double shooterFacing, double bulletVelocity, double shooterAngle,
             double spawnX, double spawnY)
         {
@@ -19,15 +29,16 @@ namespace DDaikontin
             this.angle = shooterAngle;
             this.velocity = shooterVelocity;
             this.facing = shooterFacing;
-            Geometry.ApplyForce(ref this.velocity, ref this.angle, bulletVelocity, shooterFacing);
+            
             this.uGraphics = uGraphics;
             this.collider = collider;
             this.lifetime = lifetime;
             this.posX = spawnX;
             this.posY = spawnY;
-
-            if (bulletType == 0) damage = 1;
-            else if (bulletType == 1) damage = 3;
+            
+            Geometry.ApplyForce(ref this.velocity, ref this.angle, bulletVelocity, shooterFacing);
+            if (bulletType == BulletType.Straight) damage = 1;
+            else if (bulletType == BulletType.StraightFacing) damage = 3;
         }
 
         public void Kill()
@@ -40,9 +51,16 @@ namespace DDaikontin
         {
             base.Process();
 
-            if (bulletType == 1) //Spinny shuriken bullet
+            if (bulletType == BulletType.Spin) //Spinny shuriken bullet
             {
                 facing += 0.07;
+            }
+            if (bulletType == BulletType.FourWay)
+            {
+                var tv = this.velocity;
+                facing += 0.016;
+                Geometry.ApplyForce(ref this.velocity, ref this.angle, 0.7, facing);
+                this.velocity = tv;
             }
         }
     }
