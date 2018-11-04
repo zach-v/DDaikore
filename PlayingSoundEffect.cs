@@ -10,26 +10,47 @@ namespace DDaikore
     {
         public SoundEffect se;
         public uint position;
+        public bool repeat = false;
 
-        public PlayingSoundEffect(SoundEffect sound)
+        public PlayingSoundEffect(SoundEffect sound, bool repeat = false)
         {
             se = sound;
+            this.repeat = repeat;
         }
 
         public bool isDone
         {
-            get { return se.duration * 2 == position; }
+            get {
+                return se.duration * 2 == position;
+            }
         }
 
         //Returns true if it finishes playing
         public bool mix(float[] samples)
         {
-            long dur = Math.Min(se.duration * 2 - position, samples.Length);
-            for (int sample = 0; sample < dur; sample++)
+            lock (this)
             {
-                samples[sample] += se.samples[position++];
+                long dur = Math.Min(se.duration * 2 - position, samples.Length);
+                for (int sample = 0; sample < dur; sample++)
+                {
+                    samples[sample] += se.samples[position++];
+                    if (repeat && isDone)
+                    {
+                        position = 0;
+                        dur = sample + Math.Min(se.duration * 2, samples.Length - sample);
+                    }
+                }
+                return isDone;
             }
-            return isDone;
+        }
+
+        public void stopSound()
+        {
+            lock (this)
+            {
+                repeat = false;
+                position = se.duration * 2;
+            }
         }
     }
 }
