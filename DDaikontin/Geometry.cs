@@ -63,5 +63,24 @@ namespace DDaikontin
         {
             return Math.Atan2(y1 - y2, x1 - x2);
         }
+
+        public static double DistanceFromOrigin(double x, double y)
+        {
+            return Math.Sqrt(x * x + y * y);
+        }
+
+        /// <summary>
+        /// Returns the angle restricted from 0 inclusive to Math.PI * 2 exclusive
+        /// </summary>
+        /// <param name="angle"></param>
+        /// <returns></returns>
+        public static double FixAngle(double angle)
+        {
+            while (angle < 0)
+                angle += Math.PI * 2;
+            while (angle > Math.PI * 2)
+                angle -= Math.PI * 2;
+            return angle;
+        }
     }
 }

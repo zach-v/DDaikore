@@ -34,5 +34,10 @@ namespace DDaikore
             lastValue = (uint)(((long)lastValue * 0x41C64E6D + 0x6073) & uint.MaxValue);
             return lastValue;
         }
+
+        public double RandomDouble()
+        {
+            return (double)lastValue / ((double)uint.MaxValue + 1);
+        }
     }
 }

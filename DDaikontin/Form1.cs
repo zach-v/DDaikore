@@ -18,6 +18,8 @@ namespace DDaikontin
 
         private Core core = new Core();
 
+        private readonly double ringThickness = 1000;
+
         private uint backgroundSeed = (uint)(new Random().Next());
         private int hitSound;
         private int startSound;
@@ -336,6 +338,17 @@ namespace DDaikontin
                 //rotateEnemies(); //TODO: Move to enemy ship's Process function. Need a behavior enum.
 
                 checkProjectileLifetime();
+                
+                var regionID = (int) Math.Floor(Geometry.DistanceFromOrigin(gs.currentPlayer.posX, gs.currentPlayer.posY) / ringThickness);
+                while (gs.regionSpawnRecord.Count < regionID + 2)       // NOTE: Generates 2 regions at the start
+                {
+                    gs.regionSpawnRecord.Add(new List<Tuple<double, double>>());
+                }
+
+                for (int i = Math.Max(0, regionID -1); i <= regionID + 1; i++)
+                {
+                    GenerateFoesForRegion(regionID);
+                }
 
                 foreach (var ship in gs.playerShips.Union(gs.enemyShips).Where(p => p.isAlive))
                 {
@@ -406,6 +419,43 @@ namespace DDaikontin
             }
         } // End of Gameloop
 
+        protected void GenerateFoesForRegion(int regionID)
+        {
+            var myAngleFromCenter = Math.Atan2(gs.currentPlayer.posY, gs.currentPlayer.posX);
+            //Sector angles should be smaller for farther-out regions
+            //This formula results in generating 100% of region 0, 67% of region 1, 50% of region 2, 40% of region 3, 6.25% of region 30...
+            var sectorAngle = Math.PI * 2 / (regionID + 2);
+            //Round myAngleFromCenter by sectorAngle (always a whole number of sectorAngles per circle)
+            myAngleFromCenter = Geometry.FixAngle(Math.Round(myAngleFromCenter / sectorAngle) * sectorAngle);
+            var minArc = Geometry.FixAngle(myAngleFromCenter - sectorAngle); //Also a rounded-off angle
+            var maxArc = Geometry.FixAngle(myAngleFromCenter + sectorAngle); //Ditto
+            var subsectorAngle = sectorAngle / (regionID + 5); //Number of chances to spawn an enemy in this sector
+
+            //Check if any arcs intersect the one we want to spawn for
+            foreach (var arc in gs.regionSpawnRecord[regionID])
+            {
+                //TODO: If the arc intersects (minArc, maxArc), remove the intersecting piece from (minArc, maxArc).
+                //Don't forget to account for wrapping back to 0.
+            }
+            //TODO: Then combine the two arcs if any other arc was touching this one.
+            // else
+            gs.regionSpawnRecord[regionID].Add(new Tuple<double, double>(minArc, maxArc));
+
+            if (maxArc < minArc) maxArc += Math.PI * 2; //Make sure maxArc is bigger than minArc for easier logic
+            var tRand = new PseudoRandom((uint) core.RandomInt(1024));
+            var ringInner = ringThickness * regionID; //Distance from the innermost part of this ring to the origin
+                                                      //Randomly do or don't generate random enemies at each subsectorAngle within (minArc, maxArc)
+            for (double angle = minArc; angle < maxArc; angle += subsectorAngle)
+            {
+                tRand.Next();
+                //Locate a random distance from the origin at this angle, but within the region
+                var subPos = tRand.RandomDouble() * ringThickness;
+                var x = Math.Cos(angle) * (ringInner + subPos);
+                var y = Math.Sin(angle) * (ringInner + subPos);
+                gs.generateEnemy(tRand, regionID, x, y);
+            }
+        }
+
         // Will rotate the enemies based on player position
         //Avoid doing things based on player input like this, for network multiplayer's sake
         public void rotateEnemies()
@@ -415,10 +465,7 @@ namespace DDaikontin
                 var targetFacing = Geometry.Face(enemy.posX, enemy.posY, gs.currentPlayer.posX, gs.currentPlayer.posY);
 
                 targetFacing = targetFacing - enemy.facing;
-                while (targetFacing < 0)
-                    targetFacing += Math.PI * 2;
-                while (targetFacing > Math.PI * 2)
-                    targetFacing -= Math.PI * 2;
+                targetFacing = Geometry.FixAngle(targetFacing);
 
                 if (targetFacing < Math.PI - 0.01)
                 {
