@@ -345,9 +345,9 @@ namespace DDaikontin
                     gs.regionSpawnRecord.Add(new List<Tuple<double, double>>());
                 }
 
-                for (int i = Math.Max(0, regionID -1); i <= regionID + 1; i++)
+                for (int i = Math.Max(0, regionID - 1); i <= regionID + 1; i++)
                 {
-                    GenerateFoesForRegion(regionID);
+                    GenerateFoesForRegion(i);
                 }
 
                 foreach (var ship in gs.playerShips.Union(gs.enemyShips).Where(p => p.isAlive))
@@ -428,7 +428,7 @@ namespace DDaikontin
             //Round myAngleFromCenter by sectorAngle (always a whole number of sectorAngles per circle)
             myAngleFromCenter = Geometry.FixAngle(Math.Round(myAngleFromCenter / sectorAngle) * sectorAngle);
             var minArc = Geometry.FixAngle(myAngleFromCenter - sectorAngle); //Also a rounded-off angle
-            var maxArc = Geometry.FixAngle(myAngleFromCenter + sectorAngle); //Ditto
+            var maxArc = Geometry.FixAngle(myAngleFromCenter + sectorAngle - 0.00000001); //Ditto
             var subsectorAngle = sectorAngle / (regionID + 5); //Number of chances to spawn an enemy in this sector
 
             //Check if any arcs intersect the one we want to spawn for
@@ -436,15 +436,18 @@ namespace DDaikontin
             {
                 //TODO: If the arc intersects (minArc, maxArc), remove the intersecting piece from (minArc, maxArc).
                 //Don't forget to account for wrapping back to 0.
+                minArc = maxArc; //TESTING ONLY. This is temporary until we have the arc intersection logic done. This means we'll only spawn enemies in one arc per ring...ever.
             }
+            if (minArc == maxArc) return; //Nothing to do; no-one to spawn
+
             //TODO: Then combine the two arcs if any other arc was touching this one.
-            // else
+            // else //if no arc was intersecting/touching (minArc, maxArc)
             gs.regionSpawnRecord[regionID].Add(new Tuple<double, double>(minArc, maxArc));
 
             if (maxArc < minArc) maxArc += Math.PI * 2; //Make sure maxArc is bigger than minArc for easier logic
             var tRand = new PseudoRandom((uint) core.RandomInt(1024));
             var ringInner = ringThickness * regionID; //Distance from the innermost part of this ring to the origin
-                                                      //Randomly do or don't generate random enemies at each subsectorAngle within (minArc, maxArc)
+            //Randomly do or don't generate random enemies at each subsectorAngle within (minArc, maxArc)
             for (double angle = minArc; angle < maxArc; angle += subsectorAngle)
             {
                 tRand.Next();
