@@ -6,7 +6,7 @@ namespace DDaikontin
     public enum BulletType
     {
         Auto,
-        StraightFacing,
+        StraightStrong,
         Straight,
         Spin,
         FourWay,
@@ -38,7 +38,8 @@ namespace DDaikontin
             
             Geometry.ApplyForce(ref this.velocity, ref this.angle, bulletVelocity, shooterFacing);
             if (bulletType == BulletType.Straight) damage = 1;
-            else if (bulletType == BulletType.StraightFacing) damage = 3;
+            else if (bulletType == BulletType.StraightStrong) damage = 3;
+            else if (bulletType == BulletType.FourWay) damage = 1;
         }
 
         public void Kill()
@@ -59,6 +60,7 @@ namespace DDaikontin
             {
                 var tv = this.velocity;
                 facing += 0.016;
+                //facing *= 1.02; //Fireflies
                 Geometry.ApplyForce(ref this.velocity, ref this.angle, 0.7, facing);
                 this.velocity = tv;
             }

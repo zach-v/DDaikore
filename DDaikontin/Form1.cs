@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Threading;
 using DDaikore;
+using System.Diagnostics;
 
 namespace DDaikontin
 {
@@ -259,6 +260,12 @@ namespace DDaikontin
                 }
             }
 
+#if DEBUG
+            DrawRegionSector(g, gs.regionID);
+            g.ResetTransform();
+            g.DrawString(String.Format("Sector Area: {0:0.00}", gs.regionSectorArea), new Font(Font.FontFamily, 12), Brushes.Azure, 10, pictureBox1.Height - 40);
+#endif
+
             //Draw projectiles
             foreach (var projectile in gs.playerProjectiles.Union(gs.enemyProjectiles))
             {
@@ -361,16 +368,22 @@ namespace DDaikontin
 
                 checkProjectileLifetime();
                 
-                var regionID = (int) Math.Floor(Geometry.DistanceFromOrigin(gs.currentPlayer.posX, gs.currentPlayer.posY) / ringThickness);
-                while (gs.regionSpawnRecord.Count < regionID + 2)       // NOTE: Generates 2 regions at the start
+                //Enemy spawning
+                //TODO: You can check this less often
+                gs.regionID = (int) Math.Floor(Geometry.DistanceFromOrigin(gs.currentPlayer.posX, gs.currentPlayer.posY) / ringThickness);
+
+                //Generate regions that don't already exist
+                //TODO: Instead of bools, they should be lists (initially null references) to hold inactive enemies that were in the region when deactivated.
+                while (gs.regionSpawnRecord.Count < gs.regionID + 2) //Note: Generates for 2 regions at the start
                 {
-                    gs.regionSpawnRecord.Add(new List<Tuple<double, double>>());
+                    gs.regionSpawnRecord.Add(new bool[gs.regionSpawnRecord.Count + 2]); //Sector count is equal to regionID + 2
                 }
 
-                for (int i = Math.Max(1, regionID - 1); i <= regionID + 1; i++)
+                for (int i = Math.Max(1, gs.regionID - 1); i <= gs.regionID + 1; i++)
                 {
                     GenerateFoesForRegion(i);
                 }
+
 
                 foreach (var ship in gs.playerShips.Union(gs.enemyShips).Where(p => p.isAlive))
                 {
@@ -490,44 +503,95 @@ namespace DDaikontin
             core.PlaySound(enemyShootSound);
         }
 
+#if DEBUG
+        protected void DrawRegionSector(Graphics g, int regionID)
+        {
+            //Figure out which sectors to draw
+            var myAngleFromCenter = Geometry.FixAngle(Math.Atan2(gs.currentPlayer.posY, gs.currentPlayer.posX));
+            for (var region = Math.Max(regionID - 1, 0); region <= regionID + 1; region++)
+            {
+                var sectorCount = region + 2;
+                var sectorAngle = Math.PI * 2 / sectorCount;
+                var regionBaseAngle = region * 0.1; //Needed so that all the spawn points to the east aren't lined up
+                var inSector = (int)((myAngleFromCenter + regionBaseAngle) / sectorAngle) % sectorCount;
+                for (int sector = inSector - 1; sector <= inSector + 1; sector++)
+                {
+                    var idx = (sector + sectorCount) % sectorCount;
+                    var ringInner = (float)ringThickness * region; //Distance from the innermost part of this ring to the origin
+                    var ringOuter = ringInner + (float)ringThickness;
+                    var angle = idx * sectorAngle - regionBaseAngle;
+                    var maxAngle = angle + sectorAngle;
+
+                    var spawnCount = region + 5; //Number of chances to spawn an enemy in this sector
+                    var subsectorAngle = sectorAngle / spawnCount; //Angles at which to potentially spawn enemies
+                    for (var drawAngle = angle; drawAngle <= maxAngle; drawAngle += subsectorAngle)
+                    {
+                        var cos = (float)Math.Cos(drawAngle);
+                        var sin = (float)Math.Sin(drawAngle);
+                        //Draw from the inside to the outside of this region
+                        var x1 = cos * ringInner;
+                        var y1 = sin * ringInner;
+                        var x2 = cos * ringOuter;
+                        var y2 = sin * ringOuter;
+
+                        var drawingPen = Pens.DarkSlateBlue; //Surrounding sectors -> blue
+                        if (idx == inSector && region == regionID) drawingPen = Pens.DarkSalmon; //The region and sector the player is in -> pink
+                        else if (idx == inSector) drawingPen = Pens.DarkGreen; //One region closer or farther from the origin than the player currently is -> green
+                        if (drawAngle == angle) drawingPen = new Pen(drawingPen.Color, 3);
+                        g.DrawLine(drawingPen, x1, y1, x2, y2);
+
+                        //Inform the developer of the sector's area
+                        if (region == regionID && sector == inSector)
+                        {
+                            gs.regionSectorArea = (ringOuter * ringOuter - ringInner * ringInner) * Math.PI / sectorCount / 1000000; //Final division so we have smallish numbers instead of pixels
+                            //Looks like this stabilizes around 6 (region 32)... at region 51, it's still only 6.11.
+                        }
+                    }
+                }
+            }
+        }
+#endif
+
         protected void GenerateFoesForRegion(int regionID)
         {
-            var myAngleFromCenter = Math.Atan2(gs.currentPlayer.posY, gs.currentPlayer.posX);
+            var tRand = new PseudoRandom((uint)core.RandomInt(1024));
+
+            var myAngleFromCenter = Geometry.FixAngle(Math.Atan2(gs.currentPlayer.posY, gs.currentPlayer.posX));
             //Sector angles should be smaller for farther-out regions
             //This formula results in generating 100% of region 0, 67% of region 1, 50% of region 2, 40% of region 3, 6.25% of region 30...
-            var sectorAngle = Math.PI * 2 / (regionID + 2);
+            var sectorCount = regionID + 2;
+            var sectorAngle = Math.PI * 2 / sectorCount;
+            var regionBaseAngle = regionID * 0.1; //Needed so that all the spawn points to the east aren't lined up
             //Round myAngleFromCenter by sectorAngle (always a whole number of sectorAngles per circle)
-            myAngleFromCenter = Geometry.FixAngle(Math.Round(myAngleFromCenter / sectorAngle) * sectorAngle);
-            var minArc = Geometry.FixAngle(myAngleFromCenter - sectorAngle); //Also a rounded-off angle
-            var maxArc = Geometry.FixAngle(myAngleFromCenter + sectorAngle - 0.00000001); //Ditto
-            var subsectorAngle = sectorAngle / (regionID + 5); //Number of chances to spawn an enemy in this sector
+            var sectorID = (int)((myAngleFromCenter + regionBaseAngle) / sectorAngle) % sectorCount;
+            if (regionID == gs.regionID) gs.sectorID = sectorID;
 
-            //Check if any arcs intersect the one we want to spawn for
-            foreach (var arc in gs.regionSpawnRecord[regionID])
+            for (int sector = sectorID - 1; sector <= sectorID + 1; sector++)
             {
-                //TODO: If the arc intersects (minArc, maxArc), remove the intersecting piece from (minArc, maxArc).
-                //Don't forget to account for wrapping back to 0.
-                minArc = maxArc; //TESTING ONLY. This is temporary until we have the arc intersection logic done. This means we'll only spawn enemies in one arc per ring...ever.
-            }
-            if (minArc == maxArc) return; //Nothing to do; no-one to spawn
+                var idx = (sector + sectorCount) % sectorCount;
+                if (!gs.regionSpawnRecord[regionID][idx])
+                {
+                    gs.regionSpawnRecord[regionID][idx] = true;
 
-            //TODO: Then combine the two arcs if any other arc was touching this one.
-            // else //if no arc was intersecting/touching (minArc, maxArc)
-            gs.regionSpawnRecord[regionID].Add(new Tuple<double, double>(minArc, maxArc));
+                    var ringInner = ringThickness * regionID; //Distance from the innermost part of this ring to the origin
+                    var angle = idx * sectorAngle - regionBaseAngle;
+                    var spawnCount = regionID + 5; //Number of chances to spawn an enemy in this sector
+                    var subsectorAngle = sectorAngle / spawnCount; //Angles at which to potentially spawn enemies
 
-            if (maxArc < minArc) maxArc += Math.PI * 2; //Make sure maxArc is bigger than minArc for easier logic
-            var tRand = new PseudoRandom((uint) core.RandomInt(1024));
-            var ringInner = ringThickness * regionID; //Distance from the innermost part of this ring to the origin
-            //Randomly do or don't generate random enemies at each subsectorAngle within (minArc, maxArc)
-            for (double angle = minArc; angle < maxArc; angle += subsectorAngle)
-            {
-                tRand.Next();
-                //Locate a random distance from the origin at this angle, but within the region
-                var subPos = tRand.RandomDouble() * ringThickness;
-                var x = Math.Cos(angle) * (ringInner + subPos);
-                var y = Math.Sin(angle) * (ringInner + subPos);
-                gs.generateEnemy(tRand, regionID, x, y, onEnemyFireBasic, onEnemyDamagedBasic, onEnemyDeathBasic);
+                    //Randomly do or don't generate random enemies at each subsectorAngle within (minArc, maxArc)
+                    for (int spawnIdx = 0; spawnIdx < spawnCount; spawnIdx++)
+                    {
+                        tRand.Next();
+                        //Locate a random distance from the origin at this angle, but within the region
+                        var subPos = tRand.RandomDouble() * ringThickness;
+                        var x = Math.Cos(angle) * (ringInner + subPos);
+                        var y = Math.Sin(angle) * (ringInner + subPos);
+                        gs.generateEnemy(tRand, regionID, x, y, onEnemyFireBasic, onEnemyDamagedBasic, onEnemyDeathBasic);
+                        angle += subsectorAngle;
+                    }
+                }
             }
+
         }
 
         // Will rotate the enemies based on player position
@@ -557,15 +621,19 @@ namespace DDaikontin
         {
             if ((core.GetInputState(leftArrowKey) == InputState.Held) || (core.GetInputState(aKey) == InputState.Held))
             {
-                gs.currentPlayer.facing -= 0.037;
+                gs.currentPlayer.facing = Geometry.FixAngle(gs.currentPlayer.facing - 0.037);
             }
             if ((core.GetInputState(rightArrowKey) == InputState.Held) || (core.GetInputState(dKey) == InputState.Held))
             {
-                gs.currentPlayer.facing += 0.037;
+                gs.currentPlayer.facing = Geometry.FixAngle(gs.currentPlayer.facing + 0.037);
             }
             if ((core.GetInputState(upArrowKey) == InputState.Held) || (core.GetInputState(wKey) == InputState.Held))
             {
+#if DEBUG
+                gs.currentPlayer.ApplyForce(0.09, gs.currentPlayer.facing);
+#else
                 gs.currentPlayer.ApplyForce(0.045, gs.currentPlayer.facing);
+#endif
             }
             if ((core.GetInputState(downArrowKey) == InputState.Held) || (core.GetInputState(sKey) == InputState.Held))
             {
@@ -573,7 +641,7 @@ namespace DDaikontin
             }
             if (core.GetInputState(spaceKey) == InputState.Held)
             {
-                gs.currentPlayer.FireWeapon(700, core.frameCounter);
+                gs.currentPlayer.FireWeapon(600, core.frameCounter);
             }
         }
 

@@ -1,0 +1,31 @@
+Move all game logic except drawing to a new GamePlayer class
+Move playerShipGfx, enemyShipGfx, enemy2ShipGfx out of GameState
+GameState can be stored inside GamePlayer
+Make a GameGraphics class that calls a method for each thing that needs drawn 
+Then GameGraphics knows about GamePlayer and GameState, GamePlayer knows about GameState, and GameGraphics has graphics delegates that Form1 assigns
+GameGraphics has to be informed when to start, though; it's not autonomous. So it basically should have public methods DrawMenu and DrawGame.
+
+Change inactiveEnemies to a sector-based list (List<List<ShipBase>[]> indexed by regionID and sector) and reactivate them when the sector doesn't need regenerated
+
+
+
+New concepts:
+
+enemies stronger as you get farther out, but we can't spawn all at once -> layout like a hard disk drive
+ - also allowed stashing enemies in separate inactive lists for later O(1) lookup if you get away from them
+ - enemies generated randomly at each angle step within the arc
+starry background
+ - no memory required; regenerates pseudo-random based on gridified X and Y plus a seed that is set at startup
+ - generates a random number of stars at random locations within each grid segment
+networking
+ - must have a random generator that only updates once per frame so we don't have to sync it constantly
+   - also prevents cascading desync due to random events causing more random number pulls
+ - should avoid things like enemy spawns happening quickly in response to player action
+ - basically only have to send changes caused by player input, and can recalculate relevant info to sync
+ - send version info, random generator, and frame counter at connect time 
+ - each peer trusts the other fully but doesn't receive info about his own ship
+timing
+ - estimates required time to draw graphics using a moving average
+ - only draws if there is enough leftover time estimated; skips 8 frames max
+delegates
+ - Core allows other to set Actions within it that it then calls at certain times

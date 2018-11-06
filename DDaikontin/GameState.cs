@@ -16,6 +16,19 @@ namespace DDaikontin
         public List<Projectile> enemyProjectiles;
         public List<ShipBase> inactivatedEnemies = new List<ShipBase>();
 
+        /// <summary>
+        /// Last region the player was in when it was calculated
+        /// </summary>
+        public int regionID;
+        /// <summary>
+        /// Last sector the player was in when it was calculated
+        /// </summary>
+        public int sectorID;
+
+#if DEBUG
+        public double regionSectorArea;
+#endif
+
         UnitGraphics playerShipGfx = new UnitGraphics(Pens.White, LineArt.PlayerShip);
         UnitGraphics enemyShipGfx = new UnitGraphics(Pens.Red, LineArt.PlayerShip);
         UnitGraphics enemy2ShipGfx = new UnitGraphics(Pens.Red, LineArt.EnemyShip2.Select(p => new PointF(p.X * 2f, p.Y * 2f)).ToList());
@@ -23,7 +36,7 @@ namespace DDaikontin
         public List<Tuple<double, ShipBase>> enemiesPossible;
         public ShipBase currentPlayer;
 
-        public List<List<Tuple<double, double>>> regionSpawnRecord = new List<List<Tuple<double, double>>>();
+        public List<bool[]> regionSpawnRecord = new List<bool[]>();
 
         public GameState()
         {
@@ -35,7 +48,13 @@ namespace DDaikontin
 
         public void init()
         {
-            currentPlayer = new ShipBase(playerShipGfx, Behavior.Player, 3, 6, 0, 0, LineArt.PlayerShootPoints);
+            currentPlayer = new ShipBase(playerShipGfx, Behavior.Player,
+#if DEBUG
+                50,
+#else
+                5,
+#endif
+                6, 0, 0, LineArt.PlayerShootPoints);
             playerShips.Add(currentPlayer);
 
             /*

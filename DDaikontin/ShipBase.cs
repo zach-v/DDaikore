@@ -26,7 +26,7 @@ namespace DDaikontin
         public long lastFrameFired = 0;
         public long lastDamagedFrame = -100;
 
-        public BulletType bulletMode = BulletType.StraightFacing;
+        public BulletType bulletMode = BulletType.Straight;
         public int health = 3;
 
         public Behavior behavior = Behavior.Player;
@@ -85,7 +85,7 @@ namespace DDaikontin
         /// <param name="bulletType">Type of bullet (default uses bulletMode as the type)</param>
         /// <param name="force">Force the bullet to fire even if it hasn't been long enough</param>
         /// <returns></returns>
-        public void FireWeapon(int lifeTime, long currentFrame, BulletType bulletType = BulletType.Auto, bool force = false, double angle = 0)
+        public void FireWeapon(int lifeTime, long currentFrame, BulletType bulletType = BulletType.Auto, bool force = false)
         {
             var projectiles = new List<Projectile>();
             //If it hasn't been long enough, don't fire.
@@ -96,15 +96,22 @@ namespace DDaikontin
             UnitGraphics bulletGfx = null;
             DCollider bulletCollider = null;
             double bulletVelocity = 0;
+            double bulletAngle = facing; //Bullet is thrusted in the direction of the firing unit's facing
             int bulletCount = 1;
 
-            if (bulletType == BulletType.StraightFacing)
+            if (bulletType == BulletType.Straight)
             {
                 bulletGfx = new UnitGraphics(uGraphics.color, LineArt.TinyTim);
                 bulletCollider = new DCollider(0, 0, 4);
                 bulletVelocity = 4;
-                angle = facing;
-            } else if (bulletType == BulletType.FourWay)
+            }
+            else if (bulletType == BulletType.StraightStrong)
+            {
+                bulletGfx = new UnitGraphics(uGraphics.color, LineArt.TinyTim);
+                bulletCollider = new DCollider(0, 0, 4);
+                bulletVelocity = 4;
+            }
+            else if (bulletType == BulletType.FourWay)
             {
                 bulletGfx = new UnitGraphics(uGraphics.color, LineArt.TinyTim);
                 bulletCollider = new DCollider(0, 0, 4);
@@ -117,12 +124,12 @@ namespace DDaikontin
             for (int i = 0; i < bulletCount; i++)
             {
                 lastBulletIndex = (lastBulletIndex + 1) % bulletPoints.Count;
-                var bulletSpawnPoint = Geometry.Rotate(bulletPoints[lastBulletIndex], (float)angle);
-                projectiles.Add(new Projectile(bulletType, lifeTime, bulletGfx, bulletCollider, velocity, angle,
-                    bulletVelocity, angle, posX + bulletSpawnPoint.X, posY + bulletSpawnPoint.Y));
+                var bulletSpawnPoint = Geometry.Rotate(bulletPoints[lastBulletIndex], (float)facing);
+                projectiles.Add(new Projectile(bulletType, lifeTime, bulletGfx, bulletCollider, velocity, facing,
+                    bulletVelocity, bulletAngle, posX + bulletSpawnPoint.X, posY + bulletSpawnPoint.Y));
                 if (bulletType == BulletType.FourWay)
                 {
-                    angle += (Math.PI / 2);
+                    bulletAngle += (Math.PI / 2);
                 }
             }
 
@@ -135,21 +142,23 @@ namespace DDaikontin
 
             if (behavior == Behavior.ShootConstantly)
             {
-                FireWeapon(240, currentFrame, BulletType.StraightFacing);
+                FireWeapon(240, currentFrame, BulletType.StraightStrong);
                 facing += 0.02;
+                if (facing > Math.PI * 2) facing -= Math.PI * 2;
                 ApplyForce(0.11, facing);
             }
             if (behavior == Behavior.SpinShoot)
             {
-                FireWeapon(240, currentFrame, BulletType.FourWay, false, facing);
+                FireWeapon(240, currentFrame, BulletType.FourWay, false);
                 facing -= 0.09;
+                if (facing < 0) facing += Math.PI * 2;
             }
 
             velocity *= 0.99;
 
             if (behavior == Behavior.Boss) //Boss sits still and rotates back and forth a bit for now
             {
-                FireWeapon(180, currentFrame);
+                FireWeapon(180, currentFrame, BulletType.StraightStrong);
                 if (behaviorState == 0)
                 {
                     facing += 0.001;
