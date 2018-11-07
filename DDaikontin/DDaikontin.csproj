@@ -46,12 +46,16 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Artist.cs" />
     <Compile Include="Body.cs" />
     <Compile Include="DCircle.cs" />
     <Compile Include="DCollider.cs" />
+    <Compile Include="GameRenderer.cs" />
     <Compile Include="Geometry.cs" />
     <Compile Include="GameState.cs" />
+    <Compile Include="InputMappings.cs" />
     <Compile Include="LineArt.cs" />
+    <Compile Include="PictureBoxArtist.cs" />
     <Compile Include="Projectile.cs" />
     <Compile Include="ShipBase.cs" />
     <Compile Include="Form1.cs">

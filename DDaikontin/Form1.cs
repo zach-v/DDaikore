@@ -18,11 +18,10 @@ namespace DDaikontin
         private const ushort GameVersion = 1; //Increment when you make a network-compatibility-breaking change
 
         private Core core = new Core();
+        private GameRenderer<System.Drawing.Drawing2D.Matrix> renderer;
+        private InputMappings input;
 
-        private readonly double ringThickness = 1000;
-
-        private uint backgroundSeed = (uint)(new Random().Next());
-        private int hitSound;
+        private int hitSound = -1;
         private int startSound;
         private int explosionSound;
         private int menuLoopSound;
@@ -37,13 +36,6 @@ namespace DDaikontin
         private System.Drawing.Text.PrivateFontCollection fontCollection = new System.Drawing.Text.PrivateFontCollection();
 
         private int[] menuItems = { 4, 1, 1 }; //indexed by core.menuIndex
-        private float creditsScroll;
-        private string[] creditsLines = { "--Credits--", "",
-            "Aureuscode", "Mason \"DeProgrammer\" McCoy", "",
-            "Snacktivision", "Zach \"SwagDoge\" Vanscoit", "",
-            "Base audio engine by Guy Perfect", "",
-            "Font by Typodermic Fonts Inc.", "",
-            "@ HackSI 2018" };
 
         public Form1()
         {
@@ -54,66 +46,53 @@ namespace DDaikontin
             baseFontPath = baseAssetsPath + baseFontPath;
 
             //Load font
-            fontCollection.AddFontFile(baseFontPath + "vibrocentric rg.ttf");
-            this.Font = new Font(new FontFamily("vibrocentric", fontCollection), 20, FontStyle.Regular);
-
+            try
+            {
+                fontCollection.AddFontFile(baseFontPath + "vibrocentric rg.ttf");
+                this.Font = new Font(new FontFamily("vibrocentric", fontCollection), 20, FontStyle.Regular);
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show("Font failed to load: " + e.Message);
+                //Can continue without the font
+            }
             new Thread(() =>
             {
+                input = new InputMappings(core);
+                var artist = new PictureBoxArtist(pictureBox1);
+                renderer = new GameRenderer<System.Drawing.Drawing2D.Matrix>(core, input, artist, this.Font);
+
                 core.GameVersion = GameVersion;
                 core.MenuLoop = MenuLoop;
-                core.MenuDraw = MenuDraw;
                 core.GameLoop = GameLoop;
-                core.GameDraw = MenuDraw; //Drawing is done in the Paint method for now
-                menuLoopSound = core.RegisterSound(baseSoundPath + "song-3.wav");
-                hitSound = core.RegisterSound(baseSoundPath + "sound-hit-1.wav");
-                startSound = core.RegisterSound(baseSoundPath + "sound-start-1.wav");
-                explosionSound = core.RegisterSound(baseSoundPath + "sound-death-1.wav");
-                playerShootSound = core.RegisterSound(baseSoundPath + "sound-shot-2.wav");
-                enemyShootSound = core.RegisterSound(baseSoundPath + "sound-shot-3.wav");
+                try
+                {
+                    hitSound = core.RegisterSound(baseSoundPath + "sound-hit-1.wav");
+                    menuLoopSound = core.RegisterSound(baseSoundPath + "song-3.wav");
+                    startSound = core.RegisterSound(baseSoundPath + "sound-start-1.wav");
+                    explosionSound = core.RegisterSound(baseSoundPath + "sound-death-1.wav");
+                    playerShootSound = core.RegisterSound(baseSoundPath + "sound-shot-2.wav");
+                    enemyShootSound = core.RegisterSound(baseSoundPath + "sound-shot-3.wav");
 
-                gameplayLoopSound = core.RegisterSound(baseSoundPath + "song-2.wav");
-
-                registerInputs();
+                    gameplayLoopSound = core.RegisterSound(baseSoundPath + "song-2.wav");
+                }
+                catch (Exception e) //TODO: Handle more properly (one sound at a time)
+                {
+                    MessageBox.Show("One or more sounds failed to load: " + e.Message);
+                    //Can continue without audio if we at least have ONE sound--everything will play that sound
+                    if (hitSound == -1) throw;
+                }
 
                 core.Begin();
+                artist.Dispose();
                 Application.Exit();
             }).Start();
         }
 
-        #region Inputs
-        private int enterKey;
-        private int upArrowKey;
-        private int downArrowKey;
-        private int leftArrowKey;
-        private int rightArrowKey;
-        private int wKey;
-        private int sKey;
-        private int aKey;
-        private int dKey;
-        private int spaceKey;
-        private int escapeKey;
-        private int shiftKey;
-        private void registerInputs()
-        {
-            enterKey = core.RegisterInput(Keys.Enter);
-            upArrowKey = core.RegisterInput(Keys.Up);
-            downArrowKey = core.RegisterInput(Keys.Down);
-            leftArrowKey = core.RegisterInput(Keys.Left);
-            rightArrowKey = core.RegisterInput(Keys.Right);
-            wKey = core.RegisterInput(Keys.W);
-            sKey = core.RegisterInput(Keys.S);
-            aKey = core.RegisterInput(Keys.A);
-            dKey = core.RegisterInput(Keys.D);
-            spaceKey = core.RegisterInput(Keys.Space);
-            escapeKey = core.RegisterInput(Keys.Escape);
-            shiftKey = core.RegisterInput(Keys.LShiftKey);
-        }
-        #endregion
-
         public void MenuLoop()
         {
             if (menuMusic == null) menuMusic = core.PlaySound(menuLoopSound, true);
-            if (core.GetInputState(enterKey) == InputState.JustPressed)
+            if (input.GetState(input.enterKey) == InputState.JustPressed)
             {
                 if (core.menuIndex == 0) //Main menu
                 {
@@ -136,7 +115,7 @@ namespace DDaikontin
                     {
                         core.menuIndex = 2; //Credits menu
                         core.menuOption = 0;
-                        creditsScroll = pictureBox1.Height;
+                        renderer.creditsScroll = pictureBox1.Height;
                     }
                     else if (core.menuOption == 3)
                     {
@@ -155,168 +134,14 @@ namespace DDaikontin
                 }
             }
 
-            if (core.GetInputState(downArrowKey) == InputState.JustPressed) core.menuOption = (core.menuOption + 1) % menuItems[core.menuIndex];
-            if (core.GetInputState(upArrowKey) == InputState.JustPressed) core.menuOption = core.menuOption == 0 ? menuItems[core.menuIndex] - 1 : core.menuOption - 1;
+            if (input.GetState(input.downArrowKey) == InputState.JustPressed) core.menuOption = (core.menuOption + 1) % menuItems[core.menuIndex];
+            if (input.GetState(input.upArrowKey) == InputState.JustPressed) core.menuOption = core.menuOption == 0 ? menuItems[core.menuIndex] - 1 : core.menuOption - 1;
         }
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
             core.Exit();
         }
-
-        #region Graphics
-        public void MenuDraw()
-        {
-            pictureBox1.Invalidate();
-        }
-
-        private void pictureBox1_Paint(object sender, PaintEventArgs e)
-        {
-            lock (core)
-            {
-                var g = e.Graphics;
-                //Clear the background
-                g.FillRectangle(Brushes.Black, 0, 0, pictureBox1.Width, pictureBox1.Height);
-
-                if (core.menuIndex >= 0)
-                {
-                    drawMenu(g);
-                }
-                if (core.menuIndex == -1)
-                {
-                    drawGame(g);
-                }
-            }
-        }
-
-        private void DrawStringHorizontallyCentered(Graphics g, string text, Font font, Brush brush, float x, float y, float width, float height)
-        {
-            var size = g.MeasureString(text, font, (int)width);
-            g.DrawString(text, font, brush, new RectangleF(x + width / 2 - size.Width / 2, y, size.Width + 2, height + 2));
-        }
-
-        private void DrawStringCentered(Graphics g, string text, Font font, Brush brush, float x, float y, float width, float height)
-        {
-            var size = g.MeasureString(text, font, (int)width);
-            g.DrawString(text, font, brush, new RectangleF(x + width / 2 - size.Width / 2, 
-                y + height / 2 - size.Height / 2, 
-                size.Width + 2, size.Height + 2));
-        }
-
-        private void drawMenu(Graphics g)
-        {
-            if (core.menuIndex == 0)
-            {
-                DrawStringCentered(g, "DDaikontin", new Font(Font.FontFamily, Font.Size + 4f, FontStyle.Bold), Brushes.Aqua,
-                    0, 20, pictureBox1.Width, 40);
-                DrawStringCentered(g, "Play", this.Font, core.menuOption == 0 ? Brushes.White : Brushes.Gray, 0, 60, pictureBox1.Width, 30);
-                DrawStringCentered(g, "Options", this.Font, core.menuOption == 1 ? Brushes.White : Brushes.Gray, 0, 100, pictureBox1.Width, 30);
-                DrawStringCentered(g, "Credits", this.Font, core.menuOption == 2 ? Brushes.White : Brushes.Gray, 0, 140, pictureBox1.Width, 30);
-                DrawStringCentered(g, "Exit", this.Font, core.menuOption == 3 ? Brushes.White : Brushes.Gray, 0, 180, pictureBox1.Width, 30);
-            }
-            else if (core.menuIndex == 1) //Options
-            {
-                DrawStringCentered(g, "Back", this.Font, core.menuOption == 0 ? Brushes.White : Brushes.Gray, 0, 180, pictureBox1.Width, 30);
-            }
-            else if (core.menuIndex == 2) //Credits
-            {
-                creditsScroll--;
-                //Loop around
-                var lineHeight = (int)g.MeasureString("A", Font, pictureBox1.Width).Height + 8;
-                if (creditsScroll < -lineHeight * creditsLines.Length) creditsScroll = pictureBox1.Height;
-                var tScroll = creditsScroll;
-                for (int x = 0; x < creditsLines.Length; x++)
-                {
-                    if (tScroll >= pictureBox1.Height - 90) break;
-                    DrawStringHorizontallyCentered(g, creditsLines[x], Font, Brushes.White, 0, tScroll, pictureBox1.Width, pictureBox1.Height - 90 - tScroll);
-                    tScroll += lineHeight;
-                }
-                DrawStringCentered(g, "Back", Font, core.menuOption == 0 ? Brushes.White : Brushes.Gray, 0, pictureBox1.Height - 80, pictureBox1.Width, 40);
-            }
-        }
-
-        private void drawGame(Graphics g)
-        {
-            g.TranslateTransform((float)-gs.currentPlayer.posX + pictureBox1.Width / 2, (float)-gs.currentPlayer.posY + pictureBox1.Height / 2);
-            var oldTransform = g.Transform;
-
-            //Draw a starry background using a predictable pseudorandom number sequence
-            var starSeed = new PseudoRandom(backgroundSeed);
-            for (double x = gs.currentPlayer.posX - (pictureBox1.Width / 2); x < gs.currentPlayer.posX + (pictureBox1.Width / 2) + 256; x += 256)
-            {
-                int squareX = (int)Math.Floor(x / 256);
-                for (double y = gs.currentPlayer.posY - (pictureBox1.Height / 2); y < gs.currentPlayer.posY + (pictureBox1.Height / 2) + 256; y += 256)
-                {
-                    int squareY = (int)Math.Floor(y / 256);
-                    starSeed.lastValue = (uint)(((long)squareX * 13 + squareY * 58) & uint.MaxValue);
-                    int numberOfStars = Math.Min(8 + ((int)(starSeed.Next() & 0xF00) >> 8), 25); //10 to 25 stars
-
-                    for (int i = 0; i < numberOfStars; i++)
-                    {
-                        var xc = (float)squareX * 256 + (starSeed.Next() & 255);
-                        var yc = (float)squareY * 256 + (starSeed.Next() & 255);
-                        g.DrawLine(Pens.White, xc, yc, xc, yc + 1);
-                    }
-                }
-            }
-
-#if DEBUG
-            DrawRegionSector(g, gs.regionID);
-            g.ResetTransform();
-            g.DrawString(String.Format("Sector Area: {0:0.00}", gs.regionSectorArea), new Font(Font.FontFamily, 12), Brushes.Azure, 10, pictureBox1.Height - 40);
-#endif
-
-            //Draw projectiles
-            foreach (var projectile in gs.playerProjectiles.Union(gs.enemyProjectiles))
-            {
-                g.Transform = oldTransform;
-                g.TranslateTransform((float)projectile.posX, (float)projectile.posY);
-                g.DrawLines(projectile.uGraphics.color, projectile.uGraphics.points.ToArray());
-
-#if DEBUG
-                foreach (var circle in projectile.collider.dCircles)
-                {
-                    g.DrawEllipse(Pens.Aqua, (float)(-circle.Radius + circle.X), (float)(-circle.Radius + circle.Y),
-                        (float)circle.Radius * 2, (float)circle.Radius * 2);
-                }
-#endif
-            }
-
-            //Draw ships (and in debug mode, draw their colliders)
-            foreach (var ship in gs.playerShips.Union(gs.enemyShips).Where(p => p.isAlive))
-            {
-                g.Transform = oldTransform;
-                g.TranslateTransform((float)ship.posX, (float)ship.posY);
-                g.RotateTransform((float)(ship.facing / Math.PI * 180));
-
-                if (ship.lastDamagedFrame <= core.frameCounter - 8)
-                {
-                    g.DrawLines(ship.uGraphics.color, ship.uGraphics.points.ToArray());
-                }
-                else //Invert ship color when recently damaged
-                {
-                    var tempColor = ship.uGraphics.color.Color.ToArgb();
-                    var tempPen = new Pen(Color.FromArgb(tempColor ^ 0x00FFFFFF));
-                    g.DrawLines(tempPen, ship.uGraphics.points.ToArray());
-                }
-
-#if DEBUG
-                foreach (var circle in ship.collider.dCircles)
-                {
-                    g.DrawEllipse(Pens.Aqua, (float)(-circle.Radius + circle.X), (float)(-circle.Radius + circle.Y), 
-                        (float)circle.Radius * 2, (float)circle.Radius * 2);
-                }
-#endif
-                g.ResetTransform();
-            }
-
-            if (core.GetInputState(shiftKey) == InputState.Held)
-            {
-                g.DrawLine(new Pen(Color.FromArgb(255,0,39,45)), (float) (pictureBox1.Width / 2 - gs.currentPlayer.posX), (float) (pictureBox1.Height / 2 - gs.currentPlayer.posY),
-                    pictureBox1.Width / 2, pictureBox1.Height / 2);
-            }
-        }
-        #endregion
 
         protected GameState gs;
 
@@ -353,6 +178,7 @@ namespace DDaikontin
                     core.PlaySound(enemyShootSound);
                 };
             }
+            renderer.gs = gs;
         }
 
         public void GameLoop()
@@ -370,7 +196,7 @@ namespace DDaikontin
                 
                 //Enemy spawning
                 //TODO: You can check this less often
-                gs.regionID = (int) Math.Floor(Geometry.DistanceFromOrigin(gs.currentPlayer.posX, gs.currentPlayer.posY) / ringThickness);
+                gs.regionID = (int) Math.Floor(Geometry.DistanceFromOrigin(gs.currentPlayer.posX, gs.currentPlayer.posY) / gs.ringThickness);
 
                 //Generate regions that don't already exist
                 //TODO: Instead of bools, they should be lists (initially null references) to hold inactive enemies that were in the region when deactivated.
@@ -503,55 +329,6 @@ namespace DDaikontin
             core.PlaySound(enemyShootSound);
         }
 
-#if DEBUG
-        protected void DrawRegionSector(Graphics g, int regionID)
-        {
-            //Figure out which sectors to draw
-            var myAngleFromCenter = Geometry.FixAngle(Math.Atan2(gs.currentPlayer.posY, gs.currentPlayer.posX));
-            for (var region = Math.Max(regionID - 1, 0); region <= regionID + 1; region++)
-            {
-                var sectorCount = region + 2;
-                var sectorAngle = Math.PI * 2 / sectorCount;
-                var regionBaseAngle = region * 0.1; //Needed so that all the spawn points to the east aren't lined up
-                var inSector = (int)((myAngleFromCenter + regionBaseAngle) / sectorAngle) % sectorCount;
-                for (int sector = inSector - 1; sector <= inSector + 1; sector++)
-                {
-                    var idx = (sector + sectorCount) % sectorCount;
-                    var ringInner = (float)ringThickness * region; //Distance from the innermost part of this ring to the origin
-                    var ringOuter = ringInner + (float)ringThickness;
-                    var angle = idx * sectorAngle - regionBaseAngle;
-                    var maxAngle = angle + sectorAngle;
-
-                    var spawnCount = region + 5; //Number of chances to spawn an enemy in this sector
-                    var subsectorAngle = sectorAngle / spawnCount; //Angles at which to potentially spawn enemies
-                    for (var drawAngle = angle; drawAngle <= maxAngle; drawAngle += subsectorAngle)
-                    {
-                        var cos = (float)Math.Cos(drawAngle);
-                        var sin = (float)Math.Sin(drawAngle);
-                        //Draw from the inside to the outside of this region
-                        var x1 = cos * ringInner;
-                        var y1 = sin * ringInner;
-                        var x2 = cos * ringOuter;
-                        var y2 = sin * ringOuter;
-
-                        var drawingPen = Pens.DarkSlateBlue; //Surrounding sectors -> blue
-                        if (idx == inSector && region == regionID) drawingPen = Pens.DarkSalmon; //The region and sector the player is in -> pink
-                        else if (idx == inSector) drawingPen = Pens.DarkGreen; //One region closer or farther from the origin than the player currently is -> green
-                        if (drawAngle == angle) drawingPen = new Pen(drawingPen.Color, 3);
-                        g.DrawLine(drawingPen, x1, y1, x2, y2);
-
-                        //Inform the developer of the sector's area
-                        if (region == regionID && sector == inSector)
-                        {
-                            gs.regionSectorArea = (ringOuter * ringOuter - ringInner * ringInner) * Math.PI / sectorCount / 1000000; //Final division so we have smallish numbers instead of pixels
-                            //Looks like this stabilizes around 6 (region 32)... at region 51, it's still only 6.11.
-                        }
-                    }
-                }
-            }
-        }
-#endif
-
         protected void GenerateFoesForRegion(int regionID)
         {
             var tRand = new PseudoRandom((uint)core.RandomInt(1024));
@@ -573,7 +350,7 @@ namespace DDaikontin
                 {
                     gs.regionSpawnRecord[regionID][idx] = true;
 
-                    var ringInner = ringThickness * regionID; //Distance from the innermost part of this ring to the origin
+                    var ringInner = gs.ringThickness * regionID; //Distance from the innermost part of this ring to the origin
                     var angle = idx * sectorAngle - regionBaseAngle;
                     var spawnCount = regionID + 5; //Number of chances to spawn an enemy in this sector
                     var subsectorAngle = sectorAngle / spawnCount; //Angles at which to potentially spawn enemies
@@ -583,7 +360,7 @@ namespace DDaikontin
                     {
                         tRand.Next();
                         //Locate a random distance from the origin at this angle, but within the region
-                        var subPos = tRand.RandomDouble() * ringThickness;
+                        var subPos = tRand.RandomDouble() * gs.ringThickness;
                         var x = Math.Cos(angle) * (ringInner + subPos);
                         var y = Math.Sin(angle) * (ringInner + subPos);
                         gs.generateEnemy(tRand, regionID, x, y, onEnemyFireBasic, onEnemyDamagedBasic, onEnemyDeathBasic);
@@ -619,15 +396,15 @@ namespace DDaikontin
         // Will check for these keys being used and will perform some action pertaining to gameplay
         public void CheckGameKeys()
         {
-            if ((core.GetInputState(leftArrowKey) == InputState.Held) || (core.GetInputState(aKey) == InputState.Held))
+            if ((input.GetState(input.leftArrowKey) == InputState.Held) || (input.GetState(input.aKey) == InputState.Held))
             {
                 gs.currentPlayer.facing = Geometry.FixAngle(gs.currentPlayer.facing - 0.037);
             }
-            if ((core.GetInputState(rightArrowKey) == InputState.Held) || (core.GetInputState(dKey) == InputState.Held))
+            if ((input.GetState(input.rightArrowKey) == InputState.Held) || (input.GetState(input.dKey) == InputState.Held))
             {
                 gs.currentPlayer.facing = Geometry.FixAngle(gs.currentPlayer.facing + 0.037);
             }
-            if ((core.GetInputState(upArrowKey) == InputState.Held) || (core.GetInputState(wKey) == InputState.Held))
+            if ((input.GetState(input.upArrowKey) == InputState.Held) || (input.GetState(input.wKey) == InputState.Held))
             {
 #if DEBUG
                 gs.currentPlayer.ApplyForce(0.09, gs.currentPlayer.facing);
@@ -635,11 +412,11 @@ namespace DDaikontin
                 gs.currentPlayer.ApplyForce(0.045, gs.currentPlayer.facing);
 #endif
             }
-            if ((core.GetInputState(downArrowKey) == InputState.Held) || (core.GetInputState(sKey) == InputState.Held))
+            if ((input.GetState(input.downArrowKey) == InputState.Held) || (input.GetState(input.sKey) == InputState.Held))
             {
                 gs.currentPlayer.velocity *= 0.93;
             }
-            if (core.GetInputState(spaceKey) == InputState.Held)
+            if (input.GetState(input.spaceKey) == InputState.Held)
             {
                 gs.currentPlayer.FireWeapon(600, core.frameCounter);
             }
@@ -647,7 +424,7 @@ namespace DDaikontin
 
         public void CheckInGameMenuKeys()
         {
-            if (core.GetInputState(escapeKey) == InputState.JustPressed)
+            if (input.GetState(input.escapeKey) == InputState.JustPressed)
             {
                 //Return to menu!
                 gameMusic.stopSound();
@@ -669,6 +446,11 @@ namespace DDaikontin
                     if (list[i].lifetime <= 0) list.RemoveAt(i);
                 }
             }
+        }
+
+        private void Form1_ResizeEnd(object sender, EventArgs e)
+        {
+            //TODO: On the next frame, resize the PictureBoxArtist
         }
     }
 }

@@ -17,6 +17,10 @@ namespace DDaikontin
         public List<ShipBase> inactivatedEnemies = new List<ShipBase>();
 
         /// <summary>
+        /// Thickness of each region (difference between inner and outer radius)
+        /// </summary>
+        public readonly double ringThickness = 1000;
+        /// <summary>
         /// Last region the player was in when it was calculated
         /// </summary>
         public int regionID;
