@@ -21,6 +21,8 @@ namespace DDaikontin
 
         public UnitGraphics uGraphics;
 
+        protected Projectile() { }
+
         public Projectile(BulletType bulletType, int lifetime, UnitGraphics uGraphics, DCollider collider, 
             double shooterVelocity, double shooterFacing, double bulletVelocity, double shooterAngle,
             double spawnX, double spawnY)
@@ -64,6 +66,20 @@ namespace DDaikontin
                 Geometry.ApplyForce(ref this.velocity, ref this.angle, 0.7, facing);
                 this.velocity = tv;
             }
+        }
+
+        public Projectile CloneForRenderer()
+        {
+            return new Projectile() {
+                facing = facing,
+                angle = angle,
+                uGraphics = uGraphics,
+                posX = posX,
+                posY = posY,
+#if DEBUG
+                collider = collider,
+#endif
+            };
         }
     }
 }

@@ -83,5 +83,19 @@ namespace DDaikontin
                 enemyShips.Add(new ShipBase(new UnitGraphics(Pens.Fuchsia, LineArt.BossShip), Behavior.Boss, regionID / 3 + 150, 6, x, y, LineArt.BossBulletPoints)
                 { facing = Math.PI / 2, collider = new DCollider(LineArt.BossColliders), OnWeaponFire = OnFire });
         }
+
+        public GameState CloneForRenderer()
+        {
+            return new GameState() {
+                regionID = regionID,
+                sectorID = sectorID,
+                regionSectorArea = regionSectorArea,
+                playerShips = playerShips.Where(p => p.isAlive).Select(p => p.CloneForRenderer()).ToList(),
+                enemyShips = enemyShips.Where(p => p.isAlive).Select(p => p.CloneForRenderer()).ToList(),
+                playerProjectiles = playerProjectiles.Where(p => p.lifetime > 0).Select(p => p.CloneForRenderer()).ToList(),
+                enemyProjectiles = enemyProjectiles.Where(p => p.lifetime > 0).Select(p => p.CloneForRenderer()).ToList(),
+                currentPlayer = currentPlayer.CloneForRenderer()
+            };
+        }
     }
 }

@@ -15,9 +15,16 @@ namespace DDaikontin
     public class GameRenderer<T>
     {
         public Font MenuFont;
-        public Core core;
+        public Core fromCore;
+
+        //Data copied from the Core, necessary for drawing
+        long frameCounter;
+        int menuIndex;
+        int menuOption;
+
         public InputMappings input;
-        public GameState gs;
+        public GameState fromGs;
+        protected GameState gs;
         public Artist<T> g;
         protected float gameWidth;
         protected float gameHeight;
@@ -39,6 +46,20 @@ namespace DDaikontin
         }
 
         /// <summary>
+        /// Prepare to draw--makes copies of necessary data from the Core and GameState so drawing can safely take place during the next processing frame
+        /// </summary>
+        public void Prepare()
+        {
+            //Core
+            frameCounter = fromCore.frameCounter;
+            menuIndex = fromCore.menuIndex;
+            menuOption = fromCore.menuOption;
+
+            //GameState
+            if (fromGs != null) gs = fromGs.CloneForRenderer();
+        }
+
+        /// <summary>
         /// Create a visual rendering object for DDaikontin
         /// </summary>
         /// <param name="gameCore"></param>
@@ -48,7 +69,7 @@ namespace DDaikontin
         /// <param name="menuFont"></param>
         public GameRenderer(Core gameCore, InputMappings inputs, Artist<T> artist, Font menuFont, int width, int height)
         {
-            core = gameCore;
+            fromCore = gameCore;
             input = inputs;
             g = artist;
             gameWidth = width;
@@ -73,20 +94,20 @@ namespace DDaikontin
         public void DrawMenu()
         {
             g.BeforeFrame();
-            if (core.menuIndex == 0)
+            if (menuIndex == 0)
             {
                 DrawStringCentered("DDaikontin", new Font(MenuFont.FontFamily, MenuFont.Size + 4f, FontStyle.Bold), Brushes.Aqua,
                     0, 20, gameWidth, 40);
-                DrawStringCentered("Play", MenuFont, core.menuOption == 0 ? Brushes.White : Brushes.Gray, 0, 60, gameWidth, 30);
-                DrawStringCentered("Options", MenuFont, core.menuOption == 1 ? Brushes.White : Brushes.Gray, 0, 100, gameWidth, 30);
-                DrawStringCentered("Credits", MenuFont, core.menuOption == 2 ? Brushes.White : Brushes.Gray, 0, 140, gameWidth, 30);
-                DrawStringCentered("Exit", MenuFont, core.menuOption == 3 ? Brushes.White : Brushes.Gray, 0, 180, gameWidth, 30);
+                DrawStringCentered("Play", MenuFont, menuOption == 0 ? Brushes.White : Brushes.Gray, 0, 60, gameWidth, 30);
+                DrawStringCentered("Options", MenuFont, menuOption == 1 ? Brushes.White : Brushes.Gray, 0, 100, gameWidth, 30);
+                DrawStringCentered("Credits", MenuFont, menuOption == 2 ? Brushes.White : Brushes.Gray, 0, 140, gameWidth, 30);
+                DrawStringCentered("Exit", MenuFont, menuOption == 3 ? Brushes.White : Brushes.Gray, 0, 180, gameWidth, 30);
             }
-            else if (core.menuIndex == 1) //Options
+            else if (menuIndex == 1) //Options
             {
-                DrawStringCentered("Back", MenuFont, core.menuOption == 0 ? Brushes.White : Brushes.Gray, 0, 180, gameWidth, 30);
+                DrawStringCentered("Back", MenuFont, menuOption == 0 ? Brushes.White : Brushes.Gray, 0, 180, gameWidth, 30);
             }
-            else if (core.menuIndex == 2) //Credits
+            else if (menuIndex == 2) //Credits
             {
                 creditsScroll--;
                 //Loop around
@@ -99,7 +120,7 @@ namespace DDaikontin
                     DrawStringHorizontallyCentered(creditsLines[x], MenuFont, Brushes.White, 0, tScroll, gameWidth, gameHeight - 90 - tScroll);
                     tScroll += lineHeight;
                 }
-                DrawStringCentered("Back", MenuFont, core.menuOption == 0 ? Brushes.White : Brushes.Gray, 0, gameHeight - 80, gameWidth, 40);
+                DrawStringCentered("Back", MenuFont, menuOption == 0 ? Brushes.White : Brushes.Gray, 0, gameHeight - 80, gameWidth, 40);
             }
             g.AfterFrame();
         }
@@ -159,7 +180,7 @@ namespace DDaikontin
                 g.TranslateTransform((float)ship.posX, (float)ship.posY);
                 g.RotateTransform((float)(ship.facing / Math.PI * 180));
 
-                if (ship.lastDamagedFrame <= core.frameCounter - 8)
+                if (ship.lastDamagedFrame <= frameCounter - 8)
                 {
                     g.DrawLines(ship.uGraphics.color, ship.uGraphics.points.ToArray());
                 }

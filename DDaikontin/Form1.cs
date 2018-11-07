@@ -180,7 +180,7 @@ namespace DDaikontin
                     core.PlaySound(enemyShootSound);
                 };
             }
-            renderer.gs = gs;
+            renderer.fromGs = gs;
         }
 
         public void GameLoop()
@@ -452,16 +452,23 @@ namespace DDaikontin
 
         private void Form1_ResizeEnd(object sender, EventArgs e)
         {
-            //TODO: On the next frame, resize the PictureBoxArtist
+            renderer.Resize(pictureBox1.Width, pictureBox1.Height);
         }
 
         private void pictureBox1_Paint(object sender, PaintEventArgs e)
         {
-            lock (core)
+            try
             {
-                artist.Prepare(e.Graphics);
+                lock (core)
+                {
+                    artist.Prepare(e.Graphics);
+                    renderer.Prepare();
+                }
                 if (core.menuIndex < 0) renderer.DrawGame();
                 else renderer.DrawMenu();
+            } catch (Exception q)
+            {
+                Debugger.Break();
             }
         }
     }

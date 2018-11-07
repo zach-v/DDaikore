@@ -51,6 +51,8 @@ namespace DDaikontin
             set { health = value ? 1 : 0; }
         }
 
+        protected ShipBase() { }
+
         public ShipBase(UnitGraphics uGraphics, Behavior behavior, int health, int framesBetweenBullets, double posX, double posY, List<PointF> bulletPoints)
         {
             this.uGraphics = uGraphics;
@@ -170,6 +172,22 @@ namespace DDaikontin
                     if (facing < Math.PI / 2 - 0.06) behaviorState = 0;
                 }
             }
+        }
+
+        public ShipBase CloneForRenderer()
+        {
+            return new ShipBase() {
+                lastDamagedFrame = lastDamagedFrame,
+                health = health,
+                facing = facing,
+                angle = angle,
+                uGraphics = uGraphics,
+                posX = posX,
+                posY = posY,
+#if DEBUG
+                collider = collider,
+#endif
+            };
         }
     }
 }
