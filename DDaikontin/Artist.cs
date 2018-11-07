@@ -13,7 +13,7 @@ namespace DDaikontin
     /// <typeparam name="T">Projection matrix datatype (such as System.Drawing.Drawing2D.Matrix)</typeparam>
     public abstract class Artist<T>
     {
-        public Action<float, float> BeforeFrame; //width, height
+        public Action BeforeFrame;
         public Action AfterFrame;
         //These functions are all based on Graphics object since I am arbitrarily refused the ability to inherit from it
         public Action<float, float> TranslateTransform;
@@ -27,20 +27,5 @@ namespace DDaikontin
         public Action<Pen, float, float, float, float> DrawLine;
         public Action<Pen, float, float, float, float> DrawEllipse;
         public Action<Pen, PointF[]> DrawLines;
-
-        public abstract float Width { get; }
-        public abstract float Height { get; }
-
-        /// <summary>
-        /// This method should recreate the graphics drawing area; it should be called by the GameRenderer only.
-        /// </summary>
-        /// <param name="width"></param>
-        /// <param name="height"></param>
-        public abstract void Resize(float width, float height);
-
-        /// <summary>
-        /// This method should do cleanup
-        /// </summary>
-        public abstract void Dispose();
     }
 }

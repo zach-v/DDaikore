@@ -36,26 +36,23 @@ namespace DDaikontin
         {
             gameWidth = width;
             gameHeight = height;
-            g.Resize(width, height);
         }
 
         /// <summary>
-        /// Create a visual rendering object for DDaikontin. This also sets the MenuDraw and GameDraw methods of the given Core to this renderer.
+        /// Create a visual rendering object for DDaikontin
         /// </summary>
         /// <param name="gameCore"></param>
         /// <param name="inputs"></param>
         /// <param name="width"></param>
         /// <param name="height"></param>
         /// <param name="menuFont"></param>
-        public GameRenderer(Core gameCore, InputMappings inputs, Artist<T> artist, Font menuFont)
+        public GameRenderer(Core gameCore, InputMappings inputs, Artist<T> artist, Font menuFont, int width, int height)
         {
             core = gameCore;
-            core.MenuDraw = this.DrawMenu;
-            core.GameDraw = this.DrawGame;
             input = inputs;
             g = artist;
-            gameWidth = artist.Width;
-            gameHeight = artist.Height;
+            gameWidth = width;
+            gameHeight = height;
             MenuFont = menuFont;
         }
 
@@ -75,7 +72,7 @@ namespace DDaikontin
 
         public void DrawMenu()
         {
-            g.BeforeFrame(gameWidth, gameHeight);
+            g.BeforeFrame();
             if (core.menuIndex == 0)
             {
                 DrawStringCentered("DDaikontin", new Font(MenuFont.FontFamily, MenuFont.Size + 4f, FontStyle.Bold), Brushes.Aqua,
@@ -109,7 +106,7 @@ namespace DDaikontin
 
         public void DrawGame()
         {
-            g.BeforeFrame(gameWidth, gameHeight);
+            g.BeforeFrame();
             g.TranslateTransform((float)-gs.currentPlayer.posX + gameWidth / 2, (float)-gs.currentPlayer.posY + gameHeight / 2);
             var oldTransform = g.GetMatrix();
 

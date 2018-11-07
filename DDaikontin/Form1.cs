@@ -19,6 +19,7 @@ namespace DDaikontin
 
         private Core core = new Core();
         private GameRenderer<System.Drawing.Drawing2D.Matrix> renderer;
+        private PictureBoxArtist artist;
         private InputMappings input;
 
         private int hitSound = -1;
@@ -59,12 +60,14 @@ namespace DDaikontin
             new Thread(() =>
             {
                 input = new InputMappings(core);
-                var artist = new PictureBoxArtist(pictureBox1);
-                renderer = new GameRenderer<System.Drawing.Drawing2D.Matrix>(core, input, artist, this.Font);
+                artist = new PictureBoxArtist();
+                renderer = new GameRenderer<System.Drawing.Drawing2D.Matrix>(core, input, artist, this.Font, pictureBox1.Width, pictureBox1.Height);
 
                 core.GameVersion = GameVersion;
                 core.MenuLoop = MenuLoop;
                 core.GameLoop = GameLoop;
+                core.MenuDraw = pictureBox1.Invalidate;
+                core.GameDraw = pictureBox1.Invalidate;
                 try
                 {
                     hitSound = core.RegisterSound(baseSoundPath + "sound-hit-1.wav");
@@ -84,7 +87,6 @@ namespace DDaikontin
                 }
 
                 core.Begin();
-                artist.Dispose();
                 Application.Exit();
             }).Start();
         }
@@ -451,6 +453,16 @@ namespace DDaikontin
         private void Form1_ResizeEnd(object sender, EventArgs e)
         {
             //TODO: On the next frame, resize the PictureBoxArtist
+        }
+
+        private void pictureBox1_Paint(object sender, PaintEventArgs e)
+        {
+            lock (core)
+            {
+                artist.Prepare(e.Graphics);
+                if (core.menuIndex < 0) renderer.DrawGame();
+                else renderer.DrawMenu();
+            }
         }
     }
 }
