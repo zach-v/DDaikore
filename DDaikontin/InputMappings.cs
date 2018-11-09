@@ -41,6 +41,8 @@ namespace DDaikontin
             shiftKey = core.RegisterInput(Keys.LShiftKey);
         }
 
+        //TODO: Clone so you can access networked player's most recent known input states
+
         public InputState GetState(int inputIndex)
         {
             return core.GetInputState(inputIndex);

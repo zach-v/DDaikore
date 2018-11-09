@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Drawing;
 using DDaikore;
+using System.IO;
 
 namespace DDaikontin
 {
@@ -84,6 +85,10 @@ namespace DDaikontin
                 { facing = Math.PI / 2, collider = new DCollider(LineArt.BossColliders), OnWeaponFire = OnFire });
         }
 
+        /// <summary>
+        /// Make a clone of the minimum data necessary to run the renderer concurrently with the game processing
+        /// </summary>
+        /// <returns></returns>
         public GameState CloneForRenderer()
         {
             return new GameState() {
@@ -96,6 +101,44 @@ namespace DDaikontin
                 enemyProjectiles = enemyProjectiles.Where(p => p.lifetime > 0).Select(p => p.CloneForRenderer()).ToList(),
                 currentPlayer = currentPlayer.CloneForRenderer()
             };
+        }
+
+        /// <summary>
+        /// Receive a comm message, rectify differences, and build a response message immediately
+        /// </summary>
+        /// <param name="message"></param>
+        /// <returns></returns>
+        public byte[] ReceiveMessage(byte[] message)
+        {
+            //TODO: if message length is 0, this is the first message, so just respond with the current state of affairs
+            //TODO: generate response and return it
+
+            return SerializeForComm();
+        }
+
+        /// <summary>
+        /// Serialize the game state for the sake of comm transmission (excludes info about other players)
+        /// </summary>
+        /// <returns></returns>
+        public byte[] SerializeForComm()
+        {
+            var response = new byte[1024 * 1024]; //1 MB max
+            var s = new CommMessageStreamWriter(response);
+            s.Write(currentPlayer.health); //TODO: Make a serializer method in the ShipBase class
+            s.Write(currentPlayer.angle);
+            s.Write(currentPlayer.facing);
+            s.Write(currentPlayer.velocity);
+            s.Write(currentPlayer.posX);
+            s.Write(currentPlayer.posY);
+            //TODO: Also send key states 'n' stuff
+            //TODO: I'd really like to avoid sending anything that can be computed easily--that does not include currentPlayer's projectiles!
+            //To avoid sending: anything about enemies other than how much currentPlayer damaged them and when (need to track damage a player took when and after they 'died' in case the other player did something to prevent the death and we find out about it 120 frames later)
+            //s.Write(playerProjectiles.Count); //TODO: track new player projectiles; send only the new ones
+            //TODO: Send a "going to spawn/activate enemies for region X sector Y at frame Z" message, and then do what it says
+            //TODO: Soft-tether the players. If player A goes out of range of the leader, a force applies to player A on player A's machine until they're in range again, and it syncs the same as that player's position normally does.
+
+
+            return response;
         }
     }
 }

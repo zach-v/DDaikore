@@ -36,7 +36,7 @@ namespace DDaikore
         /// </summary>
         public Action CommFreezeMenu;
         /// <summary>
-        /// Network connection made successfully.
+        /// Network connection made successfully. Occurs when the first message is received from the other side.
         /// </summary>
         public Action Connected;
         /// <summary>
@@ -61,7 +61,13 @@ namespace DDaikore
         /// Computational frame counter
         /// </summary>
         public long frameCounter { get; private set; } = 0;
+        public long lastFrameCounterReceivedViaComm { get; private set; } = 0;
         protected bool exiting = false;
+        public bool CommIsConnected { get { return connection == null || !connection.Connected; } }
+        /// <summary>
+        /// Estimated number of frames for a round-trip message-response with the connected player (running average)
+        /// </summary>
+        public long estimatedPing { get; private set; } = 0;
 
         protected Input controls = new Input();
 
@@ -73,6 +79,16 @@ namespace DDaikore
         public InputState GetInputState(int index)
         {
             return controls.GetInputState(index);
+        }
+
+        public int RegisterAnalogInput(int mouseAxis, bool delta, bool keepCentered)
+        {
+            return controls.RegisterAnalogInput(mouseAxis, delta, keepCentered);
+        }
+
+        public int GetAnalogInput(int index)
+        {
+            return controls.GetAnalogInput(index);
         }
 
         #region Audio
@@ -140,7 +156,7 @@ namespace DDaikore
         private int slowdownLagFrames = 20; //Decelerate the framerate as you approach this many frames since the last comm message received
         private const int port = 53252;
         private Socket connection = null;
-        private int headerLength = 4; //Message length is in the header (nothing else is currently necessary)
+        private int headerLength = 12; //Message length is first in the header, followed by the frame counter when the message was generated (nothing else is currently necessary)
         private List<byte[]> incomingMessages = new List<byte[]>(); //Incoming network messages. Should be one at a time (per connection)
         private PseudoRandom safeRnd = new PseudoRandom();
         private bool actedAsListener = false;
@@ -175,7 +191,7 @@ namespace DDaikore
         }
 
         /// <summary>
-        /// When expecting another player to connect to you, call this
+        /// When expecting another player to connect to you, call this. Creates a new thread.
         /// </summary>
         public void ListenForIncomingConnection()
         {
@@ -210,7 +226,7 @@ namespace DDaikore
             tBytes.CopyTo(buffer, 4);
             tBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(frameCounter));
             tBytes.CopyTo(buffer, 8);
-
+            
             SendCommMessage(buffer);
         }
 
@@ -275,6 +291,8 @@ namespace DDaikore
                         receivedBytes = 0;
                         //Get the first 32 bits from the buffer as an int the endianness-safe way
                         var bodyLength = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(buffer, 0));
+                        //Get the next 64 bits from the buffer as a long the endianness-safe way. We'll store it in lastReceivedCommFrameCounter when we lock on incomingMessages.
+                        var incomingFrameCounter = IPAddress.NetworkToHostOrder(BitConverter.ToInt64(buffer, 4));
                         while (receivedBytes < bodyLength)
                         {
                             receivedBytes += connection.Receive(buffer, receivedBytes, bodyLength - receivedBytes, SocketFlags.None);
@@ -288,6 +306,8 @@ namespace DDaikore
                             {
                                 incomingMessages.Add(msgBuffer);
                                 lastCommReceived = frameCounter;
+                                estimatedPing = (estimatedPing * 4 + incomingFrameCounter - lastFrameCounterReceivedViaComm) / 5;
+                                lastFrameCounterReceivedViaComm = incomingFrameCounter;
                             }
                         }
                         else //The first message received is different than the others. It has to check the program version and get the random seed.
@@ -296,16 +316,24 @@ namespace DDaikore
                             {
                                 if (actedAsListener) //Only the peer that accepted the other one's connection request takes the other's data
                                 {
-                                    //First two bytes are Core version number; next are the game version number.
-                                    var clientCoreVersion = IPAddress.NetworkToHostOrder(BitConverter.ToInt16(buffer, 0));
-                                    var clientGameVersion = IPAddress.NetworkToHostOrder(BitConverter.ToInt16(buffer, 2));
-                                    //Next four bytes are lastRandom (has to have been masked to avoid an exception due to signed numbers)
-                                    safeRnd.lastValue = (uint)IPAddress.NetworkToHostOrder(BitConverter.ToInt32(buffer, 4));
-                                    //Next four bytes are the frame counter we're going to start at
-                                    frameCounter = IPAddress.NetworkToHostOrder(BitConverter.ToInt64(buffer, 8));
+                                    lock (incomingMessages)
+                                    {
+                                        //First two bytes are Core version number; next are the game version number.
+                                        var clientCoreVersion = IPAddress.NetworkToHostOrder(BitConverter.ToInt16(buffer, 0));
+                                        var clientGameVersion = IPAddress.NetworkToHostOrder(BitConverter.ToInt16(buffer, 2));
+                                        //Next four bytes are lastRandom (has to have been masked to avoid an exception due to signed numbers)
+                                        safeRnd.lastValue = (uint)IPAddress.NetworkToHostOrder(BitConverter.ToInt32(buffer, 4));
+                                        //Next four bytes are the frame counter we're going to start at
+                                        frameCounter = IPAddress.NetworkToHostOrder(BitConverter.ToInt64(buffer, 8));
+                                        //Throw an empty message on the queue to cause the user's game to start responding
+                                        incomingMessages.Add(new byte[0]);
+                                        lastCommReceived = frameCounter;
+                                        lastFrameCounterReceivedViaComm = frameCounter;
+                                    }
                                 }
                                 //Ready to play multiplayer!
-                                Connected();
+                                estimatedPing = 100; //Start off with a guess
+                                Connected(); //TODO: Shouldn't we do this on the game thread? Well, it locks the same mutex, so it's probably fine.
                             }
                         }
                     }
@@ -333,7 +361,9 @@ namespace DDaikore
             var buffer = new byte[message.Length + 4];
             var msgLen = BitConverter.GetBytes(IPAddress.HostToNetworkOrder((int)message.Length));
             msgLen.CopyTo(buffer, 0);
-            message.CopyTo(buffer, 4);
+            var frameCounterBytes = BitConverter.GetBytes(IPAddress.HostToNetworkOrder(frameCounter));
+            frameCounterBytes.CopyTo(buffer, 4);
+            message.CopyTo(buffer, 12); //TODO: This is just wasting time. We can just send the 12 header bytes first and send 'message' in a second call.
             connection.Send(buffer);
         }
         #endregion
@@ -411,6 +441,7 @@ namespace DDaikore
                         //Pass on any received comm messages
                         lock (incomingMessages)
                         {
+                            //Note: because of the mutexes, even if you're using loopback, you can't receive responses caused by responding to these messages until the next frame.
                             while (incomingMessages.Count != 0)
                             {
                                 ReceiveMessage(incomingMessages.First());
@@ -424,7 +455,7 @@ namespace DDaikore
                         }
                         nextTicks += targetTickRate;
 
-                        if (connection == null || !connection.Connected) lastCommReceived = frameCounter; //If there's no net connection, no slowing down.
+                        if (!CommIsConnected) lastCommReceived = frameCounter; //If there's no net connection, no slowing down.
                         var framesTilFreezeDueToComms = Math.Max(lastCommReceived + permissibleCommFramesAhead - frameCounter, 0); //Cap at 0 minimum
                         if (framesTilFreezeDueToComms < slowdownLagFrames)
                         {

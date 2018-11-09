@@ -1,11 +1,16 @@
-Move all game logic except drawing to a new GamePlayer class
-Move playerShipGfx, enemyShipGfx, enemy2ShipGfx out of GameState
-GameState can be stored inside GamePlayer
-Make a GameGraphics class that calls a method for each thing that needs drawn 
-Then GameGraphics knows about GamePlayer and GameState, GamePlayer knows about GameState, and GameGraphics has graphics delegates that Form1 assigns
-GameGraphics has to be informed when to start, though; it's not autonomous. So it basically should have public methods DrawMenu and DrawGame.
-
 Change inactiveEnemies to a sector-based list (List<List<ShipBase>[]> indexed by regionID and sector) and reactivate them when the sector doesn't need regenerated
+ - But do we want to tether enemies to the sector that spawned them, or do we want to recalculate what sector they're in when it gets deactivated and also deactivate them if they leave the sector?
+
+May as well occasionally remove the colliders from bullets that are too far away for the player to contact them during their lifetime. (Estimate as xdiff or ydiff > lifetime * (player max speed + bullet speed))
+
+Implement mouse controls. Reconsider how I did GetKeyState--it'd be great if there were a shorter syntax.
+Implement joystick controls. Implement control customization.
+Come up with some meta-game. Maybe rare enemies that spawn certain distances out could drop permanent, persistent (minor) upgrades?
+Finish the networking and test it. (Also make sure it doesn't send a message if the frame hasn't passed)
+ - Spawn delay should be same as the max lag? May have to increase sector size because of that--spawning and moving from inactive lists to active lists should be based on a delay so both players stay in sync better.
+ - Find a solution to the problem of "currentPlayer" being the center of the universe
+
+More UI components (health bar, player lives, score, multiplayer stuff)
 
 
 

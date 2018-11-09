@@ -36,7 +36,16 @@ namespace DDaikontin
         private PlayingSoundEffect gameMusic = null;
         private System.Drawing.Text.PrivateFontCollection fontCollection = new System.Drawing.Text.PrivateFontCollection();
 
-        private int[] menuItems = { 4, 1, 1 }; //indexed by core.menuIndex
+        public enum MenuIndex
+        {
+            Main = 0,
+            HostGame = 1,
+            JoinGame = 2,
+            Options = 3,
+            Credits = 4
+        }
+
+        private int[] menuItems = { 4, 1, 1, 1, 1 }; //indexed by core.menuIndex; should match MenuIndex enum
 
         public Form1()
         {
@@ -96,7 +105,7 @@ namespace DDaikontin
             if (menuMusic == null) menuMusic = core.PlaySound(menuLoopSound, true);
             if (input.GetState(input.enterKey) == InputState.JustPressed)
             {
-                if (core.menuIndex == 0) //Main menu
+                if (core.menuIndex == (int)MenuIndex.Main) //Main menu
                 {
                     if (core.menuOption == 0)
                     {
@@ -110,34 +119,72 @@ namespace DDaikontin
                     }
                     else if (core.menuOption == 1)
                     {
-                        core.menuIndex = 1; //Options menu
+                        core.menuIndex = (int)MenuIndex.HostGame; //Host game menu
                         core.menuOption = 0;
+                        core.Connected = () => {
+                            //When connection succeeds, start the game
+                            core.menuIndex = -1;
+                        };
+                        //Start listening for incoming connections
+                        core.ListenForIncomingConnection();
                     }
                     else if (core.menuOption == 2)
                     {
-                        core.menuIndex = 2; //Credits menu
+                        core.menuIndex = (int)MenuIndex.JoinGame; //Join game menu
+                        core.menuOption = 0;
+                        //TODO: allow user to input an IP address
+                        core.Connected = () => {
+                            //When connection succeeds, start the game
+                            core.menuIndex = -1;
+                        };
+                        core.Connect(new System.Net.IPAddress(new byte[] { 127, 0, 0, 1 }));
+                    }
+                    else if (core.menuOption == 3)
+                    {
+                        core.menuIndex = (int)MenuIndex.Options; //Options menu
+                        core.menuOption = 0;
+                    }
+                    else if (core.menuOption == 4)
+                    {
+                        core.menuIndex = (int)MenuIndex.Credits; //Credits menu
                         core.menuOption = 0;
                         renderer.creditsScroll = pictureBox1.Height;
                     }
-                    else if (core.menuOption == 3)
+                    else if (core.menuOption == 5)
                     {
                         core.Exit();
                     }
                 }
-                else if (core.menuIndex == 1) //Options menu
+                else if (core.menuIndex == (int)MenuIndex.HostGame) //Host game menu
                 {
                     core.menuIndex = 0;
                     core.menuOption = 1;
                 }
-                else if (core.menuIndex == 2) //Credits menu
+                else if (core.menuIndex == (int)MenuIndex.JoinGame) //Join game menu
                 {
                     core.menuIndex = 0;
                     core.menuOption = 2;
+                }
+                else if (core.menuIndex == (int)MenuIndex.Options) //Options menu
+                {
+                    core.menuIndex = 0;
+                    core.menuOption = 3;
+                }
+                else if (core.menuIndex == (int)MenuIndex.Credits) //Credits menu
+                {
+                    core.menuIndex = 0;
+                    core.menuOption = 4;
                 }
             }
 
             if (input.GetState(input.downArrowKey) == InputState.JustPressed) core.menuOption = (core.menuOption + 1) % menuItems[core.menuIndex];
             if (input.GetState(input.upArrowKey) == InputState.JustPressed) core.menuOption = core.menuOption == 0 ? menuItems[core.menuIndex] - 1 : core.menuOption - 1;
+        }
+
+        public void ReceiveMessage(byte[] message)
+        {
+            var response = gs.ReceiveMessage(message);
+            core.SendCommMessage(response);
         }
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
@@ -466,7 +513,13 @@ namespace DDaikontin
                 }
                 if (core.menuIndex < 0) renderer.DrawGame();
                 else renderer.DrawMenu();
-            } catch (Exception q)
+
+                if (core.CommIsConnected)
+                {
+                    e.Graphics.DrawString(String.Format("Ping in frames: {0}", core.estimatedPing), Font, Brushes.LawnGreen, 0, pictureBox1.Height - 30);
+                }
+            }
+            catch (Exception q)
             {
                 Debugger.Break();
             }
