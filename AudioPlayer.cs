@@ -166,6 +166,7 @@ namespace DDaikore
 
             // Close the output stream
             Stop();
+            while (GetState() != Stopped) Thread.Sleep(1);
             waveOutClose(WaveHandle);
 
             // Delete allocated memory
@@ -174,8 +175,7 @@ namespace DDaikore
             Marshal.FreeHGlobal(Buffers[1].lpData);
             Marshal.FreeHGlobal(Buffers[1].dwUser);
 
-            // Update instance fields
-            State      = Stopped;
+            // Update instance fields (Stopped is already set by Stop() call above)
             WaveHandle = IntPtr.Zero;
         }
 

@@ -133,6 +133,7 @@ namespace DDaikontin
             //TODO: Also send key states 'n' stuff
             //TODO: I'd really like to avoid sending anything that can be computed easily--that does not include currentPlayer's projectiles!
             //To avoid sending: anything about enemies other than how much currentPlayer damaged them and when (need to track damage a player took when and after they 'died' in case the other player did something to prevent the death and we find out about it 120 frames later)
+            //To send: if any bullets hit currentPlayer, send when they hit currentPlayer. Either need to retain (dead) bullets in the list until sync or need to give bullets unique IDs (maybe something like (frameCounter & 0xFF) * 0x100 + spawnerId at time of spawn) that wrap around at a number so large that it can't happen in <= 120 frames.
             //s.Write(playerProjectiles.Count); //TODO: track new player projectiles; send only the new ones
             //TODO: Send a "going to spawn/activate enemies for region X sector Y at frame Z" message, and then do what it says
             //TODO: Soft-tether the players. If player A goes out of range of the leader, a force applies to player A on player A's machine until they're in range again, and it syncs the same as that player's position normally does.

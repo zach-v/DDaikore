@@ -91,21 +91,30 @@ namespace DDaikontin
                 size.Width + 2, size.Height + 2));
         }
 
+        private void DrawMenuOption(ref int optionIndex, string text, int baseY)
+        {
+            DrawStringCentered(text, MenuFont, menuOption == optionIndex ? Brushes.White : Brushes.Gray, 0, baseY + optionIndex * 40, gameWidth, 30);
+            optionIndex++;
+        }
+
         public void DrawMenu()
         {
             g.BeforeFrame();
+            int opt = 0;
             if (menuIndex == 0)
             {
                 DrawStringCentered("DDaikontin", new Font(MenuFont.FontFamily, MenuFont.Size + 4f, FontStyle.Bold), Brushes.Aqua,
                     0, 20, gameWidth, 40);
-                DrawStringCentered("Play", MenuFont, menuOption == 0 ? Brushes.White : Brushes.Gray, 0, 60, gameWidth, 30);
-                DrawStringCentered("Options", MenuFont, menuOption == 1 ? Brushes.White : Brushes.Gray, 0, 100, gameWidth, 30);
-                DrawStringCentered("Credits", MenuFont, menuOption == 2 ? Brushes.White : Brushes.Gray, 0, 140, gameWidth, 30);
-                DrawStringCentered("Exit", MenuFont, menuOption == 3 ? Brushes.White : Brushes.Gray, 0, 180, gameWidth, 30);
+                DrawMenuOption(ref opt, "Play", 60);
+                DrawMenuOption(ref opt, "Host Game", 60);
+                DrawMenuOption(ref opt, "Join Game", 60);
+                DrawMenuOption(ref opt, "Options", 60);
+                DrawMenuOption(ref opt, "Credits", 60);
+                DrawMenuOption(ref opt, "Exit", 60);
             }
             else if (menuIndex == 1) //Options
             {
-                DrawStringCentered("Back", MenuFont, menuOption == 0 ? Brushes.White : Brushes.Gray, 0, 180, gameWidth, 30);
+                DrawMenuOption(ref opt, "Back", 180);
             }
             else if (menuIndex == 2) //Credits
             {
@@ -120,7 +129,7 @@ namespace DDaikontin
                     DrawStringHorizontallyCentered(creditsLines[x], MenuFont, Brushes.White, 0, tScroll, gameWidth, gameHeight - 90 - tScroll);
                     tScroll += lineHeight;
                 }
-                DrawStringCentered("Back", MenuFont, menuOption == 0 ? Brushes.White : Brushes.Gray, 0, gameHeight - 80, gameWidth, 40);
+                DrawMenuOption(ref opt, "Back", (int)gameHeight - 80);
             }
             g.AfterFrame();
         }

@@ -23,8 +23,8 @@ namespace DDaikontin
         {
             AfterFrame = () => {
 #if DEBUG
-                g.DrawString(String.Format("fps: {0:0.00}", 1 / frameSeconds), SystemFonts.DefaultFont, Brushes.White, 300, 0);
-                g.DrawString(String.Format("avg: {0:0.00}", 1 / avgFrameSeconds), SystemFonts.DefaultFont, Brushes.White, 350, 0);
+                g.DrawString(String.Format("fps: {0:0.00}", 1 / frameSeconds), SystemFonts.DefaultFont, Brushes.White, 260, 0);
+                g.DrawString(String.Format("avg: {0:0.00}", 1 / avgFrameSeconds), SystemFonts.DefaultFont, Brushes.White, 330, 0);
                 sw.Stop();
                 frameSeconds = (double)sw.ElapsedTicks / System.Diagnostics.Stopwatch.Frequency;
                 avgFrameSeconds = (9 * avgFrameSeconds + frameSeconds) / 10; //Moving average (estimate of last 10 frames' average; not exact)

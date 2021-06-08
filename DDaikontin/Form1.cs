@@ -17,7 +17,7 @@ namespace DDaikontin
     {
         private const ushort GameVersion = 1; //Increment when you make a network-compatibility-breaking change
 
-        private Core core = new Core();
+        private Core core = new Core(GameVersion, 53253);
         private GameRenderer<System.Drawing.Drawing2D.Matrix> renderer;
         private PictureBoxArtist artist;
         private InputMappings input;
@@ -45,7 +45,7 @@ namespace DDaikontin
             Credits = 4
         }
 
-        private int[] menuItems = { 4, 1, 1, 1, 1 }; //indexed by core.menuIndex; should match MenuIndex enum
+        private int[] menuItems = { 6, 1, 1, 1, 1 }; //indexed by core.menuIndex; should match MenuIndex enum
 
         public Form1()
         {
@@ -72,7 +72,6 @@ namespace DDaikontin
                 artist = new PictureBoxArtist();
                 renderer = new GameRenderer<System.Drawing.Drawing2D.Matrix>(core, input, artist, this.Font, pictureBox1.Width, pictureBox1.Height);
 
-                core.GameVersion = GameVersion;
                 core.MenuLoop = MenuLoop;
                 core.GameLoop = GameLoop;
                 core.MenuDraw = pictureBox1.Invalidate;
@@ -121,9 +120,14 @@ namespace DDaikontin
                     {
                         core.menuIndex = (int)MenuIndex.HostGame; //Host game menu
                         core.menuOption = 0;
-                        core.Connected = () => {
-                            //When connection succeeds, start the game
-                            core.menuIndex = -1;
+                        core.Connected = (coreVer, gameVer) => {
+                            if (coreVer != core.CoreVersion || gameVer != core.GameVersion)
+                            {
+                                //TODO: Tell the user the versions don't match
+                                core.Disconnect();
+                            }
+                            else //When connection succeeds, start the game
+                                core.menuIndex = -1;
                         };
                         //Start listening for incoming connections
                         core.ListenForIncomingConnection();
@@ -133,9 +137,14 @@ namespace DDaikontin
                         core.menuIndex = (int)MenuIndex.JoinGame; //Join game menu
                         core.menuOption = 0;
                         //TODO: allow user to input an IP address
-                        core.Connected = () => {
-                            //When connection succeeds, start the game
-                            core.menuIndex = -1;
+                        core.Connected = (coreVer, gameVer) => {
+                            if (coreVer != core.CoreVersion || gameVer != core.GameVersion)
+                            {
+                                //TODO: Tell the user the versions don't match
+                                core.Disconnect();
+                            }
+                            else //When connection succeeds, start the game
+                                core.menuIndex = -1;
                         };
                         core.Connect(new System.Net.IPAddress(new byte[] { 127, 0, 0, 1 }));
                     }
@@ -230,8 +239,16 @@ namespace DDaikontin
             renderer.fromGs = gs;
         }
 
+#if DEBUG
+        private Stopwatch procFPSStopwatch = new Stopwatch();
+        private double frameSeconds = 0;
+        private double avgFrameSeconds = 0.05;
+#endif
         public void GameLoop()
         {
+#if DEBUG
+            procFPSStopwatch.Start();
+#endif
             lock (core)
             {
                 if (gameMusic == null) gameMusic = core.PlaySound(gameplayLoopSound, true, 0.6f);
@@ -360,6 +377,13 @@ namespace DDaikontin
                     }
                 }
             }
+
+#if DEBUG
+            procFPSStopwatch.Stop();
+            frameSeconds = (double)procFPSStopwatch.ElapsedTicks / Stopwatch.Frequency;
+            avgFrameSeconds = (9 * avgFrameSeconds + frameSeconds) / 10; //Moving average (estimate of last 10 frames' average; not exact)
+            procFPSStopwatch.Reset();
+#endif
         } // End of Gameloop
 
         public void onEnemyDamagedBasic()
@@ -511,7 +535,14 @@ namespace DDaikontin
                     artist.Prepare(e.Graphics);
                     renderer.Prepare();
                 }
-                if (core.menuIndex < 0) renderer.DrawGame();
+                if (core.menuIndex < 0)
+                {
+                    renderer.DrawGame();
+#if DEBUG
+                    e.Graphics.DrawString(String.Format("proc fps: {0:0.00}", 1 / frameSeconds), SystemFonts.DefaultFont, Brushes.White, 400, 0);
+                    e.Graphics.DrawString(String.Format("avg: {0:0.00}", 1 / avgFrameSeconds), SystemFonts.DefaultFont, Brushes.White, 500, 0);
+#endif
+                }
                 else renderer.DrawMenu();
 
                 if (core.CommIsConnected)

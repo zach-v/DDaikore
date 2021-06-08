@@ -2,6 +2,7 @@ Change inactiveEnemies to a sector-based list (List<List<ShipBase>[]> indexed by
  - But do we want to tether enemies to the sector that spawned them, or do we want to recalculate what sector they're in when it gets deactivated and also deactivate them if they leave the sector?
 
 May as well occasionally remove the colliders from bullets that are too far away for the player to contact them during their lifetime. (Estimate as xdiff or ydiff > lifetime * (player max speed + bullet speed))
+ - To do this as well as possible: have a "check in X frames" variable for each physics object; when checking for collisions, if this is nonzero, only decrement it; otherwise, set this based on how long it would take for something to reach it the soonest (Math.Min(distance to each object divided by that object's max speed))
 
 Implement mouse controls. Reconsider how I did GetKeyState--it'd be great if there were a shorter syntax.
 Implement joystick controls. Implement control customization.

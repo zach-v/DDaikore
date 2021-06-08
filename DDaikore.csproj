@@ -49,6 +49,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AudioPlayer.cs" />
+    <Compile Include="Comm.cs" />
     <Compile Include="CommMessageStreamReader.cs" />
     <Compile Include="Input.cs" />
     <Compile Include="CommMessageStreamWriter.cs" />
